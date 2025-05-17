@@ -34,8 +34,8 @@ jobs:
         if: steps.compare_version.outputs.changed == 'true'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.release_tag.compare_version.CUR_VERSION }}
-          name: Release ${{ steps.release_tag.compare_version.CUR_VERSION }}
+          tag_name: ${{ steps.compare_version.outputs.CUR_VERSION }}
+          name: Release ${{ steps.compare_version.outputs.CUR_VERSION }}
           body: |
             Automated release for commit ${{ github.sha }}.
 
@@ -43,7 +43,7 @@ jobs:
 
             Builds for various platforms are attached.
           draft: false
-          prerelease: false
+          prerelease: true
           files: |
             ./out/*
         env:
