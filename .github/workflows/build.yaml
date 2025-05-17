@@ -2,7 +2,7 @@ name: Build unipm
 on:
   push:
     branches:
-      - main
+      - master
 jobs:
   build-and-release:
     runs-on: ubuntu-latest
