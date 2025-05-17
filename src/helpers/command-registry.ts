@@ -1,14 +1,9 @@
 import { Command as HelpCommand } from "../commands/help";
-
-export interface CommandDefinition {
-  name: string;
-  description: string;
-  aliases?: string[];
-  execute?: (args: string[]) => Promise<any>;
-}
+import { Command as DetectCommand } from "../commands/detect";
 
 export const commands = [
   HelpCommand(),
+  DetectCommand(),
   // Add other commands here
 ];
 
