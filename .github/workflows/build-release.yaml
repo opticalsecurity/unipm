@@ -22,6 +22,8 @@ jobs:
         run: |
           PREV_VERSION=$(git show HEAD~1:package.json | node -pe "JSON.parse(require('fs').readFileSync(0)).version")
           CUR_VERSION=$(node -pe "JSON.parse(require('fs').readFileSync('package.json')).version")
+          echo "PREV_VERSION=$PREV_VERSION" >> $GITHUB_OUTPUT
+          echo "CUR_VERSION=$CUR_VERSION" >> $GITHUB_OUTPUT
           echo "changed=$( [ \"$PREV_VERSION\" != \"$CUR_VERSION\" ] && echo true || echo false )" >> $GITHUB_OUTPUT
 
       - name: Run production build
