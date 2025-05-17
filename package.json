@@ -13,5 +13,9 @@
   },
   "peerDependencies": {
     "typescript": "^5"
+  },
+  "dependencies": {
+    "chalk": "2.4.1",
+    "cli-table": "^0.3.11"
   }
 }
