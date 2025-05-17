@@ -30,6 +30,25 @@ jobs:
           bun install
           bun run build
 
+      - name: Create GitHub Release
+        if: steps.compare_version.outputs.changed == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.release_tag.compare_version.CUR_VERSION }}
+          name: Release ${{ steps.release_tag.compare_version.CUR_VERSION }}
+          body: |
+            Automated release for commit ${{ github.sha }}.
+
+            This is a production release.
+
+            Builds for various platforms are attached.
+          draft: false
+          prerelease: false
+          files: |
+            ./out/*
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
       - name: Skip build when version unchanged
         if: steps.compare_version.outputs.changed == 'false'
         run: echo "No version change detected. Skipping build."
