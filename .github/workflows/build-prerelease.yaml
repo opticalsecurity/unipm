@@ -1,4 +1,4 @@
-name: Build unipm
+name: Build unipm prerelease
 on:
   push:
     branches:

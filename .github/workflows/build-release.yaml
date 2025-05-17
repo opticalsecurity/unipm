@@ -1,4 +1,4 @@
-name: Build Production
+name: Build unipm release
 on:
   push:
     branches:
