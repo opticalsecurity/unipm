@@ -10,6 +10,9 @@ dist
 coverage
 *.lcov
 
+# code weaver
+.llm
+
 # logs
 logs
 _.log

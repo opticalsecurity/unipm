@@ -17,7 +17,9 @@ const year = formatDateComponent(currentDate.getFullYear() % 100); // Get last t
 const shortSha = execSync("git rev-parse --short=7 HEAD").toString().trim();
 
 const outDir = "./out";
-const targets = [
+
+// Define all possible targets
+const allTargets = [
   "bun-linux-x64",
   "bun-linux-arm64",
   "bun-darwin-x64",
@@ -27,7 +29,31 @@ const targets = [
   "bun-linux-arm64-musl",
 ];
 
-for (const target of targets) {
+// Get the target from the command line arguments
+// Expecting something like: bun run build --target bun-linux-x64
+const args = process.argv.slice(2);
+let targetFromArgs: string | undefined;
+
+const targetArgIndex = args.indexOf("--target");
+if (targetArgIndex !== -1 && args[targetArgIndex + 1]) {
+  targetFromArgs = args[targetArgIndex + 1];
+}
+
+// Determine the targets to build
+const targetsToBuild = targetFromArgs ? [targetFromArgs] : allTargets;
+
+// Ensure the output directory exists
+if (!statSync(outDir, { throwIfNoEntry: false })) {
+  execSync(`mkdir -p ${outDir}`);
+}
+
+for (const target of targetsToBuild) {
+  // Validate if the target is in the list of all possible targets
+  if (!allTargets.includes(target)) {
+    console.error(`Error: Invalid target specified: ${target}`);
+    process.exit(1); // Exit if an invalid target is passed
+  }
+
   const platformArch = target.replace("bun-", ""); // "linux-x64", "linux-arm64", "darwin-arm64"
   // Define the final filename
   const finalFilename = `unipm-${year}-${month}-${day}-${shortSha}-${platformArch}`;
@@ -53,8 +79,8 @@ for (const target of targets) {
   } catch (error) {
     console.error(`Error during build for ${target}:`, error);
     // Decide if you want to exit on first error or continue with other targets
-    // process.exit(1);
+    // process.exit(1); // Consider exiting on error in CI
   }
 }
 
-console.log("All builds completed.");
+console.log("All requested builds completed.");
