@@ -58,6 +58,7 @@ unipm automatically detects the package manager by lockfiles and/or package.json
 | update       | u     | Updates dependencies                     |
 | run <script> |       | Runs a script from package.json          |
 | exec <cmd>   | x     | Runs a command using the package manager |
+| detect       |       | Detects the current project pm           |
 
 ---
 
