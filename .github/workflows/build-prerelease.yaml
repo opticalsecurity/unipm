@@ -1,65 +1,26 @@
-name: Build unipm prerelease
+# .github/workflows/build-prerelease.yml
+name: Build Prerelease
+
 on:
   push:
-    branches:
-      - master
+    branches: [master, dev]
+  pull_request:
+
 jobs:
-  build-prerelease:
+  build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
+    strategy:
+      matrix:
+        target: [bun-linux-x64, bun-darwin-x64, bun-windows-x64]
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-
-      - name: Install Dependencies
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v1
+      - name: Install dependencies
         run: bun install
-
-      - name: Run tests
-        run: |
-          bun run test
-
-      - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v5
+      - name: Run build script for ${{ matrix.target }}
+        run: bun run build --target ${{ matrix.target }}
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
         with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-
-      - name: Upload test results to Codecov
-        if: ${{ !cancelled() }}
-        uses: codecov/test-results-action@v1
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-
-      - name: Build Project
-        run: bun run build
-
-      - name: Create Release Tag Name
-        id: release_tag
-        run: |
-          SHORT_SHA=$(git rev-parse --short=7 HEAD)
-          TAG_NAME="v$(date +'%Y-%m-%d')-${SHORT_SHA}"
-          echo "TAG_NAME=${TAG_NAME}" >> $GITHUB_OUTPUT
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.release_tag.outputs.TAG_NAME }}
-          name: Dev Release ${{ steps.release_tag.outputs.TAG_NAME }}
-          body: |
-            Automated release for commit ${{ github.sha }}.
-
-            This is not a production nor stable release. It is intended for testing purposes only.
-            Please use the latest stable (semver compliant) release for production.
-
-            Builds for various platforms are attached.
-          draft: false
-          prerelease: true
-          files: |
-            ./out/*
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
+          name: unipm-prerelease-${{ matrix.target }}
+          path: ./out/
