@@ -45,7 +45,7 @@ jobs:
 
             Builds for various platforms are attached.
           draft: false
-          prerelease: true
+          prerelease: false
           files: |
             ./out/*
         env:
