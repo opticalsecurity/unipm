@@ -1,0 +1,32 @@
+name: Build Production
+on:
+  push:
+    branches:
+      - master
+jobs:
+  build-production:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Compare package.json version
+        id: compare_version
+        run: |
+          PREV_VERSION=$(git show HEAD~1:package.json | node -pe "JSON.parse(require('fs').readFileSync(0)).version")
+          CUR_VERSION=$(node -pe "JSON.parse(require('fs').readFileSync('package.json')).version")
+          echo "changed=$( [ \"$PREV_VERSION\" != \"$CUR_VERSION\" ] && echo true || echo false )" >> $GITHUB_OUTPUT
+
+      - name: Run production build
+        if: steps.compare_version.outputs.changed == 'true'
+        run: |
+          bun install
+          bun run build
+
+      - name: Skip build when version unchanged
+        if: steps.compare_version.outputs.changed == 'false'
+        run: echo "No version change detected. Skipping build."
