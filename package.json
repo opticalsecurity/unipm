@@ -2,7 +2,7 @@
   "name": "unipm",
   "module": "src/entrypoint.ts",
   "license": "GPL-3.0-or-later",
-  "version": "0.5.4",
+  "version": "0.6.0",
   "type": "module",
   "private": true,
   "scripts": {
