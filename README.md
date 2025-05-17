@@ -43,8 +43,11 @@ unipm update
 unipm u
 ```
 
-unipm automatically detects the package manager by lockfiles and/or package.json "packageManager" value.  
-(`package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`, `bun.lockb`).
+unipm automatically detects the package manager of a project with various methods, executed in this order:
+
+1. 'packageManager' field in package.json
+2. Any supported lockfiles present
+3. Any supported package manager installed in the system (Priority: bun > pnpm > yarn > npm)
 
 ---
 
