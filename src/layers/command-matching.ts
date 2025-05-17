@@ -1,6 +1,6 @@
-import { PackageManager } from "./PackageManagers";
+import { PackageManager } from "../types/package-managers";
 
-export const CommandVariants = {
+export const CommandMatching = {
   add: {
     [PackageManager.BUN]: {
       command: "bun add",

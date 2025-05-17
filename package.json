@@ -2,11 +2,12 @@
   "name": "unipm",
   "module": "src/entrypoint.ts",
   "license": "GPL-3.0-or-later",
-  "version": "0.5.0",
+  "version": "0.5.3",
   "type": "module",
   "private": true,
   "scripts": {
-    "build": "bun run ./src/scripts/build.ts"
+    "build": "bun run ./src/scripts/build.ts",
+    "test": "bun test --bail --coverage "
   },
   "devDependencies": {
     "@types/bun": "latest"

@@ -9,7 +9,7 @@ export const commands = [
   // Add other commands here
 ];
 
-export default async function GetCommands() {
+export async function GetCommands() {
   return commands.flatMap((command) => {
     return {
       name: command.name,

@@ -7,7 +7,7 @@ export function Command() {
       const { parseContent } = await import("../helpers/content-parser");
       const { DetectContent } = await import("./contents/detect");
       const { DetectPackageManager } = await import(
-        "../helpers/detect-package-manager"
+        "../layers/package-manager-detection"
       );
       const { version } = await import("../../package.json");
 

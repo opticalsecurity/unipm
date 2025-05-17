@@ -1,9 +1,10 @@
 import {
   type DetectPackageManagerOutput,
+  DetectionSource,
   Lockfiles,
   Lockfile,
-  DetectionSource,
-} from "../types/DetectPackageManager";
+  PackageManager,
+} from "../types/package-managers";
 
 /**
  * Detects the package manager used in the current project
@@ -49,7 +50,12 @@ export async function DetectPackageManager(): Promise<DetectPackageManagerOutput
     const availablePackageManagers = await detectAvailablePackageManagers();
     if (availablePackageManagers.length > 0) {
       // Priority: bun > pnpm > yarn > npm
-      const priorityOrder = ["bun", "pnpm", "yarn", "npm"];
+      const priorityOrder = [
+        PackageManager.BUN,
+        PackageManager.PNPM,
+        PackageManager.YARN,
+        PackageManager.NPM,
+      ];
       for (const manager of priorityOrder) {
         const found = availablePackageManagers.find(
           (pm) => pm.name === manager
@@ -91,21 +97,21 @@ async function getPackageManagerFromLockfile(
   switch (lockfile) {
     case Lockfile.NPM:
       return {
-        name: "npm",
+        name: PackageManager.NPM,
         version: await getPackageManagerVersion("npm"),
         detectionSource: DetectionSource.LOCKFILE,
         detectionHint: `Found ${lockfile}`,
       };
     case Lockfile.YARN:
       return {
-        name: "yarn",
+        name: PackageManager.YARN,
         version: await getPackageManagerVersion("yarn"),
         detectionSource: DetectionSource.LOCKFILE,
         detectionHint: `Found ${lockfile}`,
       };
     case Lockfile.PNPM:
       return {
-        name: "pnpm",
+        name: PackageManager.PNPM,
         version: await getPackageManagerVersion("pnpm"),
         detectionSource: DetectionSource.LOCKFILE,
         detectionHint: `Found ${lockfile}`,
@@ -113,7 +119,7 @@ async function getPackageManagerFromLockfile(
     case Lockfile.BUN:
     case Lockfile.BUN_NOT_BINARY:
       return {
-        name: "bun",
+        name: PackageManager.BUN,
         version: await getPackageManagerVersion("bun"),
         detectionSource: DetectionSource.LOCKFILE,
         detectionHint: `Found ${lockfile}`,
@@ -155,7 +161,12 @@ async function getPackageManagerVersion(
 async function detectAvailablePackageManagers(): Promise<
   DetectPackageManagerOutput[]
 > {
-  const packageManagers = ["npm", "yarn", "pnpm", "bun"];
+  const packageManagers = [
+    PackageManager.NPM,
+    PackageManager.YARN,
+    PackageManager.PNPM,
+    PackageManager.BUN,
+  ];
   const results: DetectPackageManagerOutput[] = [];
 
   await Promise.all(
