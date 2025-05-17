@@ -1,4 +1,4 @@
-# .github/workflows/release-drafter.yml
+# .github/workflows/release-drafter.yaml
 name: Release Drafter
 
 on:
