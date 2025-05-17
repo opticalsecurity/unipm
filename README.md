@@ -13,11 +13,9 @@ unipm detects and runs it for you!
 
 ## Installation
 
-```bash
-bun install -g unipm
-# or
-npm install -g unipm
-```
+1. Download latest binary (for your platform) from the [latest](https://github.com/opticalsecurity/unipm/releases/latest) GitHub release.
+2. Move the binary to the required folder in your OS (/usr/bin for Linux and MacOS)
+3. Open up a new terminal, and execute unipm.
 
 ---
 
