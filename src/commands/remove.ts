@@ -6,7 +6,7 @@ export function Command() {
   return {
     name: "remove",
     description: "Remove a package from the current project",
-    aliases: ["r"],
+    aliases: ["rm", "r"],
     execute: async (args: string[]) => {
       try {
         // Validate arguments
