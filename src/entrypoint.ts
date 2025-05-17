@@ -18,5 +18,5 @@ async function main() {
   }
 }
 
-console.log(`unipm v${version}`);
+console.log(`📦 unipm v${version}`);
 await main();

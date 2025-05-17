@@ -1,11 +1,13 @@
 import { Command as HelpCommand } from "../commands/help";
 import { Command as DetectCommand } from "../commands/detect";
 import { Command as AddCommand } from "../commands/add";
+import { Command as RemoveCommand } from "../commands/remove";
 
 export const commands = [
   HelpCommand(),
   DetectCommand(),
   AddCommand(),
+  RemoveCommand(),
   // Add other commands here
 ];
 

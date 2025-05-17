@@ -16,7 +16,6 @@
     "typescript": "^5"
   },
   "dependencies": {
-    "chalk": "latest",
-    "cli-table": "^0.3.11"
+    "chalk": "latest"
   }
 }
