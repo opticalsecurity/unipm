@@ -1,0 +1,50 @@
+name: Build unipm
+on:
+  push:
+    branches:
+      - main
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install Dependencies
+        run: bun install
+
+      - name: Build Project
+        run: bun run build
+
+      - name: Create Release Tag Name
+        id: release_tag
+        run: |
+          SHORT_SHA=$(git rev-parse --short=7 HEAD)
+          TAG_NAME="v$(date +'%Y-%m-%d')-${SHORT_SHA}"
+          echo "TAG_NAME=${TAG_NAME}" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.release_tag.outputs.TAG_NAME }}
+          name: Dev Release ${{ steps.release_tag.outputs.TAG_NAME }}
+          body: |
+            Automated release for commit ${{ github.sha }}.
+
+            This is not a production nor stable release. It is intended for testing purposes only.
+            Please use the latest stable (semver compliant) release for production.
+
+            Builds for various platforms are attached.
+          draft: false
+          prerelease: true
+          files: |
+            ./out/*
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
