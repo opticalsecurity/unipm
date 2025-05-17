@@ -1,26 +1,35 @@
 import { expect, test, describe, mock, beforeEach, afterEach } from "bun:test";
 import { DetectPackageManager } from "../layers/package-manager-detection";
 import { DetectionSource, PackageManager } from "../types/package-managers";
-import { file } from "bun";
 
 describe("Package Manager Detection", () => {
-  const originalFileExists = file.prototype.exists;
-  const originalFileJson = file.prototype.json;
-
-  let mockFileExists: any;
-  let mockFileJson: any;
+  // Store original functions
+  let originalBunFile: any;
+  let mockBunFile: any;
+  let mockExists: any;
+  let mockJson: any;
   let mockSpawn: any;
+  let originalSpawn: any;
 
   beforeEach(() => {
-    // Mock Bun.file to control file existence checks
-    mockFileExists = mock(() => Promise.resolve(true));
-    file.prototype.exists = mockFileExists;
+    // Mock Bun.file function
+    mockExists = mock(() => Promise.resolve(true));
+    mockJson = mock(() => Promise.resolve({}));
 
-    // Mock file.json to return controlled package.json content
-    mockFileJson = mock(() => Promise.resolve({}));
-    file.prototype.json = mockFileJson;
+    // Create a file mock that returns an object with exists and json methods
+    mockBunFile = mock((path: string) => {
+      return {
+        exists: () => mockExists(path),
+        json: () => mockJson(path),
+      };
+    });
 
-    // Mock Bun.spawn for package manager version checks
+    // Store original Bun.file and replace with mock
+    originalBunFile = Bun.file;
+    // @ts-ignore - Mock implementation
+    Bun.file = mockBunFile;
+
+    // Mock Bun.spawn
     mockSpawn = mock(() => {
       return {
         exited: Promise.resolve(0),
@@ -33,21 +42,23 @@ describe("Package Manager Detection", () => {
       };
     });
 
-    // Store original Bun.spawn
-    const originalSpawn = Bun.spawn;
+    // Store original Bun.spawn and replace with mock
+    originalSpawn = Bun.spawn;
     // @ts-ignore - Mock implementation
     Bun.spawn = mockSpawn;
   });
 
   afterEach(() => {
     // Restore original functions
-    file.prototype.exists = originalFileExists;
-    file.prototype.json = originalFileJson;
+    // @ts-ignore - Restore original
+    Bun.file = originalBunFile;
+    // @ts-ignore - Restore original
+    Bun.spawn = originalSpawn;
   });
 
   test("should detect package manager from package.json", async () => {
     // Setup mock package.json with packageManager field
-    mockFileJson.mockImplementationOnce(() =>
+    mockJson.mockImplementationOnce(() =>
       Promise.resolve({ packageManager: "pnpm@8.5.0" })
     );
 
@@ -60,10 +71,10 @@ describe("Package Manager Detection", () => {
 
   test("should detect package manager from lockfile", async () => {
     // Mock package.json without packageManager field
-    mockFileJson.mockImplementationOnce(() => Promise.resolve({}));
+    mockJson.mockImplementationOnce(() => Promise.resolve({}));
 
     // Setup lockfile exists check - yarn.lock exists
-    mockFileExists.mockImplementation((path: string) => {
+    mockExists.mockImplementation((path: string) => {
       if (path === "package.json") return Promise.resolve(true);
       if (path === "yarn.lock") return Promise.resolve(true);
       return Promise.resolve(false);
@@ -77,7 +88,7 @@ describe("Package Manager Detection", () => {
 
   test("should return 'none' when no package.json exists", async () => {
     // Mock package.json not existing
-    mockFileExists.mockImplementationOnce(() => Promise.resolve(false));
+    mockExists.mockImplementationOnce(() => Promise.resolve(false));
 
     const result = await DetectPackageManager();
 
@@ -88,7 +99,7 @@ describe("Package Manager Detection", () => {
 
   test("should handle errors gracefully", async () => {
     // Mock an error occurring when reading package.json
-    mockFileJson.mockImplementationOnce(() =>
+    mockJson.mockImplementationOnce(() =>
       Promise.reject(new Error("Failed to read package.json"))
     );
 
