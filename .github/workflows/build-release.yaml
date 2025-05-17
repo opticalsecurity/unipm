@@ -26,10 +26,14 @@ jobs:
           echo "CUR_VERSION=$CUR_VERSION" >> $GITHUB_OUTPUT
           echo "changed=$( [ \"$PREV_VERSION\" != \"$CUR_VERSION\" ] && echo true || echo false )" >> $GITHUB_OUTPUT
 
-      - name: Run production build
+      - name: Install dependencies
         if: steps.compare_version.outputs.changed == 'true'
         run: |
           bun install
+
+      - name: Run production build
+        if: steps.compare_version.outputs.changed == 'true'
+        run: |
           bun run build
 
       - name: Create GitHub Release
