@@ -37,7 +37,14 @@ jobs:
           bun run test
 
       - name: Upload coverage reports to Codecov
+        if: steps.compare_version.outputs.changed == 'true'
         uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Upload test results to Codecov
+        if: steps.compare_version.outputs.changed == 'true'
+        uses: codecov/test-results-action@v1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
 
