@@ -1,6 +1,5 @@
 export const AddContent = `
-[#text.green][#text.bold]Executing command with:[#text.reset]
-[#text.bold][#variables.packageManager][#text.reset] [#text.dim]v[#variables.packageManagerVersion][#text.reset]
+[#text.bold][#text.cyan]🔍 Detected package manager: [#text.reset][#variables.packageManager] [#variables.packageManagerVersion]
 
-[#text.cyan]>[#text.reset] [#variables.command]
+[#text.bold][#text.green]🗳  Adding package(s) using: [#text.dim][#variables.command][#text.reset]
 `;
