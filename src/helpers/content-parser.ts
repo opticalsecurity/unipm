@@ -1,10 +1,13 @@
 import chalk from "chalk";
 
+// Define supported chalk styles as type
+type ChalkStyle = keyof typeof chalk;
+
 /**
  * Parses a template with variable tags and text styles.
  * Supports:
  * - [#variables.key]: injects the value of variables[key]
- * - [#text.color]: applies style to following text until [#text.reset]
+ * - [#text.color|style]: applies style to following text until [#text.reset]
  */
 export function parseContent(
   template: string,
@@ -12,8 +15,7 @@ export function parseContent(
 ): string {
   const tokenRegex = /(\[#(?:text|variables)\.[^\]]+\])/g;
   const parts = template.split(tokenRegex);
-  let styleStack: string[] = [];
-  let currentChalk = chalk;
+  let styleStack: ChalkStyle[] = [];
   let output = "";
 
   for (const part of parts) {
@@ -23,24 +25,41 @@ export function parseContent(
       if (type === "text") {
         if (key === "reset") {
           styleStack = [];
-        } else if (key !== undefined) {
-          styleStack.push(key);
+        } else if (
+          key !== undefined &&
+          key in chalk &&
+          typeof chalk[key as ChalkStyle] === "function"
+        ) {
+          styleStack.push(key as ChalkStyle);
         }
-        // Rebuild the chalk builder according to the style stack
-        currentChalk = styleStack.reduce((ch, style) => {
-          if (typeof (chalk as any)[style] === "function") {
-            return (ch as any)[style]();
-          }
-          return ch;
-        }, chalk);
+        // Skip unknown styles silently
       } else if (type === "variables") {
-        if (key !== undefined) {
-          const val = variables[key];
-          output += currentChalk(val != null ? String(val) : "");
+        // Apply current styles to the variable value
+        let val = key !== undefined ? variables[key as string] : undefined;
+        let formattedVal = val != null ? String(val) : "";
+
+        // Apply all accumulated styles
+        let styledText = formattedVal;
+        for (const style of styleStack) {
+          if (typeof chalk[style] === "function") {
+            // Safe to call since we checked in the if condition above
+            styledText = (chalk[style] as (text: string) => string)(styledText);
+          }
         }
+
+        output += styledText;
       }
     } else {
-      output += currentChalk(part);
+      // Apply current styles to regular text
+      let styledText = part;
+      for (const style of styleStack) {
+        if (typeof chalk[style] === "function") {
+          // Safe to call since we checked in the if condition above
+          styledText = (chalk[style] as (text: string) => string)(styledText);
+        }
+      }
+
+      output += styledText;
     }
   }
 

@@ -1,7 +1,7 @@
 export const HelpContent = `
 unipm v[#variables.version]
 
-[#text.pink][#text.bold]Available commands:[#text.reset]
+[#text.green][#text.bold]Available commands:[#text.reset]
 [#variables.commandsTable]
 
 `;

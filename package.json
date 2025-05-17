@@ -2,7 +2,7 @@
   "name": "unipm",
   "module": "src/entrypoint.ts",
   "license": "GPL-3.0-or-later",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "private": true,
   "scripts": {
@@ -15,7 +15,7 @@
     "typescript": "^5"
   },
   "dependencies": {
-    "chalk": "2.4.1",
+    "chalk": "latest",
     "cli-table": "^0.3.11"
   }
 }
