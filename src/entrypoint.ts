@@ -1,9 +1,7 @@
-import { parseContent } from "./helpers/content-parser";
-import { HelpContent } from "./commands/contents/help";
+import { ExecuteCommand } from "./helpers/command-registry";
 
-const output = parseContent(HelpContent, {
-  version: "1.0.0",
-  commandsTable: `testNotTable`,
-});
+const args = process.argv.slice(2);
 
-console.log(output);
+if (args.length === 0) {
+  await ExecuteCommand("help", []);
+}
