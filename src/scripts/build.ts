@@ -33,7 +33,7 @@ for (const target of targets) {
   const outFile = join(outDir, finalFilename);
 
   // Construct the build command
-  const command = `bun build --compile --minify --sourcemap --bytecode ./src/entrypoint.ts --outfile ${outFile} --target=${target}`;
+  const command = `bun build --compile --minify --sourcemap ./src/entrypoint.ts --outfile ${outFile} --target=${target}`;
 
   try {
     // Check if the output file already exists and delete it
