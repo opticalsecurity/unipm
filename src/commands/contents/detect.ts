@@ -1,6 +1,4 @@
 export const DetectContent = `
-unipm v[#variables.version]
-
 [#text.green][#text.bold]Detected package manager:[#text.reset]
 [#text.bold][#variables.packageManager][#text.reset] [#text.dim]v[#variables.packageManagerVersion][#text.reset]
 

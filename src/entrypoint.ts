@@ -1,7 +1,7 @@
 import { ExecuteCommand } from "./helpers/command-registry";
+const { version } = await import("../package.json");
 
 const args = process.argv.slice(2);
-
 async function main() {
   if (args.length === 0) {
     await ExecuteCommand("help", []);
@@ -18,4 +18,5 @@ async function main() {
   }
 }
 
+console.log(`unipm v${version}`);
 await main();
