@@ -1,6 +1,7 @@
 import { CommandMatching } from "../layers/command-matching";
 import { executePackageManagerCommand } from "../layers/command-execution";
 import { Logger } from "../helpers/logger";
+import { PackageManager } from "../types/package-managers";
 
 export function Command() {
   return {
@@ -34,11 +35,17 @@ export function Command() {
           return 1;
         }
 
+        // Check if the detected package manager is a valid key in PackageManager enum
+        if (!(detectedPackageManager.name in PackageManager)) {
+          Logger.error(
+            `Unknown package manager: ${detectedPackageManager.name}.`
+          );
+          return 1;
+        }
+
         // Get command variant for the detected package manager
-        const commandVariant =
-          CommandMatching.remove[
-            detectedPackageManager.name as keyof typeof CommandMatching.remove
-          ];
+        const packageManagerKey = detectedPackageManager.name as PackageManager;
+        const commandVariant = CommandMatching.remove[packageManagerKey];
 
         // Check if the package manager is supported
         if (!commandVariant) {
