@@ -1,4 +1,5 @@
 import { ExecuteCommand } from "./helpers/command-registry";
+import { CheckVersion } from "./helpers/check-unipm-version";
 const { version } = await import("../package.json");
 
 const args = process.argv.slice(2);
@@ -8,7 +9,6 @@ async function main() {
   } else {
     const commandName = args[0] ?? "help";
     const commandArgs = args.slice(1);
-
     try {
       await ExecuteCommand(commandName, commandArgs);
     } catch (error: unknown) {
