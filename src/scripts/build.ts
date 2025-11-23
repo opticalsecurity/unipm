@@ -1,5 +1,5 @@
 import { execSync } from "child_process";
-import { statSync, rmSync } from "fs";
+import { statSync, rmSync, mkdirSync } from "fs";
 import { join } from "path";
 
 // Helper function to format date components to two digits
@@ -44,7 +44,7 @@ const targetsToBuild = targetFromArgs ? [targetFromArgs] : allTargets;
 
 // Ensure the output directory exists
 if (!statSync(outDir, { throwIfNoEntry: false })) {
-  execSync(`mkdir -p ${outDir}`);
+  mkdirSync(outDir, { recursive: true });
 }
 
 for (const target of targetsToBuild) {
