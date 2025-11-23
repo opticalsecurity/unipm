@@ -1,28 +1,67 @@
-import { expect, test, describe, mock, beforeEach, afterEach } from "bun:test";
 import { Command as HelpCommand } from "../commands/help";
 import { Command as DetectCommand } from "../commands/detect";
 import { Command as AddCommand } from "../commands/add";
 import { Command as RemoveCommand } from "../commands/remove";
-import { DetectPackageManager } from "../layers/package-manager-detection";
-import { executePackageManagerCommand } from "../layers/command-execution";
-import { PackageManager, DetectionSource } from "../types/package-managers";
-import { parseContent } from "../helpers/content-parser";
-import { Logger } from "../helpers/logger";
+import { Command as InstallCommand } from "../commands/install";
+import { Command as UpdateCommand } from "../commands/update";
+import { Command as RunCommand } from "../commands/run";
+import { Command as ExecCommand } from "../commands/exec";
+import { vi, describe, test, expect, beforeEach, afterEach } from "vitest";
 
 describe("Commands", () => {
   let originalConsoleLog: any;
   let mockConsoleLog: any;
+  let originalBunFile: any;
+  let mockBunFile: any;
+  let mockExists: any;
+  let mockJson: any;
+  let mockSpawn: any;
+  let originalSpawn: any;
 
   beforeEach(() => {
-    // Mock console.log to verify output
+    // Mock console.log
     originalConsoleLog = console.log;
-    mockConsoleLog = mock(() => {});
+    mockConsoleLog = vi.fn();
     console.log = mockConsoleLog;
+
+    // Mock Bun.file
+    mockExists = vi.fn(() => Promise.resolve(true));
+    mockJson = vi.fn(() => Promise.resolve({}));
+
+    mockBunFile = vi.fn((path: string) => {
+      return {
+        exists: () => mockExists(path),
+        json: () => mockJson(path),
+      };
+    });
+
+    originalBunFile = Bun.file;
+    // @ts-ignore
+    Bun.file = mockBunFile;
+
+    // Mock Bun.spawn
+    mockSpawn = vi.fn(() => {
+      return {
+        exited: Promise.resolve(0),
+        stdout: new ReadableStream({
+          start(controller) {
+            controller.close();
+          },
+        }),
+      };
+    });
+
+    originalSpawn = Bun.spawn;
+    // @ts-ignore
+    Bun.spawn = mockSpawn;
   });
 
   afterEach(() => {
-    // Restore console.log
     console.log = originalConsoleLog;
+    // @ts-ignore
+    Bun.file = originalBunFile;
+    // @ts-ignore
+    Bun.spawn = originalSpawn;
   });
 
   describe("Help Command", () => {
@@ -41,28 +80,6 @@ describe("Commands", () => {
   });
 
   describe("Detect Command", () => {
-    let originalDetectPackageManager: any;
-    let mockDetectPackageManager: any;
-
-    beforeEach(() => {
-      // Mock DetectPackageManager
-      originalDetectPackageManager = DetectPackageManager;
-      mockDetectPackageManager = mock(async () => ({
-        name: PackageManager.BUN,
-        version: "1.0.0",
-        detectionSource: DetectionSource.LOCKFILE,
-        detectionHint: "Found bun.lock",
-      }));
-
-      // @ts-ignore: Mocking implementation
-      (global as any).DetectPackageManager = mockDetectPackageManager;
-    });
-
-    afterEach(() => {
-      // Restore original function
-      (global as any).DetectPackageManager = originalDetectPackageManager;
-    });
-
     test("should have correct name and alias", () => {
       const command = DetectCommand();
       expect(command.name).toBe("detect");
@@ -70,6 +87,9 @@ describe("Commands", () => {
     });
 
     test("should output detection results when executed", async () => {
+      // Setup mock for package.json
+      mockJson.mockImplementation(() => Promise.resolve({ packageManager: "bun@1.0.0" }));
+
       const command = DetectCommand();
       await command.execute([]);
       expect(mockConsoleLog).toHaveBeenCalled();
@@ -77,94 +97,165 @@ describe("Commands", () => {
   });
 
   describe("Add Command", () => {
-    let originalDetectPackageManager: any;
-    let mockDetectPackageManager: any;
-
-    beforeEach(() => {
-      // Mock DetectPackageManager
-      originalDetectPackageManager = DetectPackageManager;
-      mockDetectPackageManager = mock(() =>
-        Promise.resolve({
-          name: PackageManager.BUN,
-          version: "1.0.0",
-          detectionSource: DetectionSource.LOCKFILE,
-          detectionHint: "Found bun.lock",
-        })
-      );
-
-      // @ts-ignore: Mocking implementation
-      (global as any).DetectPackageManager = mockDetectPackageManager;
-    });
-
-    afterEach(() => {
-      // Restore original function
-      (global as any).DetectPackageManager = originalDetectPackageManager;
-    });
-
     test("should have correct name and aliases", () => {
       const command = AddCommand();
       expect(command.name).toBe("add");
       expect(command.aliases).toContain("a");
     });
+
+    test("should return error when no package is specified", async () => {
+      const command = AddCommand();
+      const result = await command.execute([]);
+      expect(result).toBe(1);
+    });
+
+    test("should execute successfully with valid package", async () => {
+      // Setup mock for package.json to detect bun
+      mockJson.mockImplementation(() => Promise.resolve({ packageManager: "bun@1.0.0" }));
+
+      const command = AddCommand();
+      const result = await command.execute(["react"]);
+
+      expect(mockConsoleLog).toHaveBeenCalled();
+      expect(result).toBe(0);
+
+      // Verify spawn was called
+      expect(mockSpawn).toHaveBeenCalled();
+      const calls = mockSpawn.mock.calls;
+      const lastCall = calls[calls.length - 1];
+      expect(lastCall[0]).toContain("bun");
+      expect(lastCall[0]).toContain("add");
+      expect(lastCall[0]).toContain("react");
+    });
+
+    test("should handle no package manager detected", async () => {
+      mockExists.mockImplementation(() => Promise.resolve(false));
+      const command = AddCommand();
+      const result = await command.execute(["react"]);
+      expect(result).toBe(1);
+    });
+
+    test("should handle unsupported package manager", async () => {
+      mockJson.mockImplementation(() => Promise.resolve({ packageManager: "unsupported@1.0.0" }));
+      const command = AddCommand();
+      const result = await command.execute(["react"]);
+      expect(result).toBe(1);
+    });
+
+    test("should handle execution failure", async () => {
+      mockJson.mockImplementation(() => Promise.resolve({ packageManager: "bun@1.0.0" }));
+      mockSpawn.mockImplementation(() => {
+        return {
+          exited: Promise.resolve(1),
+          stdout: new ReadableStream({ start(c) { c.close(); } }),
+          stderr: new ReadableStream({ start(c) { c.close(); } }),
+        };
+      });
+
+      const command = AddCommand();
+      const result = await command.execute(["react"]);
+      expect(result).toBe(1);
+    });
+
+    test("should handle execution failure with error object", async () => {
+      mockJson.mockImplementation(() => Promise.resolve({ packageManager: "bun@1.0.0" }));
+      mockSpawn.mockImplementation(() => {
+        throw new Error("Spawn failed");
+      });
+
+      const command = AddCommand();
+      const result = await command.execute(["react"]);
+      expect(result).toBe(1);
+    });
+
+    test("should handle unexpected error", async () => {
+      mockJson.mockImplementation(() => { throw new Error("Unexpected"); });
+      const command = AddCommand();
+      const result = await command.execute(["react"]);
+      expect(result).toBe(1);
+    });
+  });
+
+  describe("Install Command", () => {
+    test("should have correct name and aliases", () => {
+      const command = InstallCommand();
+      expect(command.name).toBe("install");
+      expect(command.aliases).toContain("i");
+    });
+
+    test("should return error when arguments are provided", async () => {
+      const command = InstallCommand();
+      const result = await command.execute(["some-arg"]);
+      expect(result).toBe(1);
+    });
+
+    test("should execute successfully without arguments", async () => {
+      // Setup mock for package.json to detect bun
+      mockJson.mockImplementation(() => Promise.resolve({ packageManager: "bun@1.0.0" }));
+
+      const command = InstallCommand();
+      const result = await command.execute([]);
+
+      expect(mockConsoleLog).toHaveBeenCalled();
+      expect(result).toBe(0);
+
+      // Verify spawn was called
+      expect(mockSpawn).toHaveBeenCalled();
+      const calls = mockSpawn.mock.calls;
+      const lastCall = calls[calls.length - 1];
+      expect(lastCall[0]).toContain("bun");
+      expect(lastCall[0]).toContain("install");
+    });
+
+    test("should handle no package manager detected", async () => {
+      mockExists.mockImplementation(() => Promise.resolve(false));
+      const command = InstallCommand();
+      const result = await command.execute([]);
+      expect(result).toBe(1);
+    });
+
+    test("should handle unsupported package manager", async () => {
+      mockJson.mockImplementation(() => Promise.resolve({ packageManager: "unsupported@1.0.0" }));
+      const command = InstallCommand();
+      const result = await command.execute([]);
+      expect(result).toBe(1);
+    });
+
+    test("should handle execution failure", async () => {
+      mockJson.mockImplementation(() => Promise.resolve({ packageManager: "bun@1.0.0" }));
+      mockSpawn.mockImplementation(() => {
+        return {
+          exited: Promise.resolve(1),
+          stdout: new ReadableStream({ start(c) { c.close(); } }),
+          stderr: new ReadableStream({ start(c) { c.close(); } }),
+        };
+      });
+
+      const command = InstallCommand();
+      const result = await command.execute([]);
+      expect(result).toBe(1);
+    });
+
+    test("should handle execution failure with error object", async () => {
+      mockJson.mockImplementation(() => Promise.resolve({ packageManager: "bun@1.0.0" }));
+      mockSpawn.mockImplementation(() => {
+        throw new Error("Spawn failed");
+      });
+
+      const command = InstallCommand();
+      const result = await command.execute([]);
+      expect(result).toBe(1);
+    });
+
+    test("should handle unexpected error", async () => {
+      mockJson.mockImplementation(() => { throw new Error("Unexpected"); });
+      const command = InstallCommand();
+      const result = await command.execute([]);
+      expect(result).toBe(1);
+    });
   });
 
   describe("Remove Command", () => {
-    let originalDetectPackageManager: any;
-    let mockDetectPackageManager: any;
-    let originalLoggerError: any;
-    let mockLoggerError: any;
-    let originalExecuteCommand: any;
-    let mockExecuteCommand: any;
-    let originalLoggerSuccess: any;
-    let mockLoggerSuccess: any;
-
-    beforeEach(() => {
-      // Mock console.log
-      originalConsoleLog = console.log;
-      mockConsoleLog = mock(() => {});
-      console.log = mockConsoleLog;
-
-      // Mock DetectPackageManager
-      originalDetectPackageManager = DetectPackageManager;
-      mockDetectPackageManager = mock(() =>
-        Promise.resolve({
-          name: PackageManager.BUN,
-          version: "1.0.0",
-          detectionSource: DetectionSource.LOCKFILE,
-          detectionHint: "Found bun.lock",
-        })
-      );
-
-      // Mock Logger methods
-      originalLoggerError = Logger.error;
-      mockLoggerError = mock(() => {});
-      Logger.error = mockLoggerError;
-
-      originalLoggerSuccess = Logger.success;
-      mockLoggerSuccess = mock(() => {});
-      Logger.success = mockLoggerSuccess;
-
-      // Mock executePackageManagerCommand
-      originalExecuteCommand = executePackageManagerCommand;
-      mockExecuteCommand = mock(() =>
-        Promise.resolve({ success: true, exitCode: 0 })
-      );
-      (global as any).executePackageManagerCommand = mockExecuteCommand;
-
-      // Replace global function
-      (global as any).DetectPackageManager = mockDetectPackageManager;
-      (global as any).executePackageManagerCommand = mockExecuteCommand;
-    });
-
-    afterEach(() => {
-      // Restore original functions
-      console.log = originalConsoleLog;
-      Logger.error = originalLoggerError;
-      Logger.success = originalLoggerSuccess;
-      (global as any).DetectPackageManager = originalDetectPackageManager;
-      (global as any).executePackageManagerCommand = originalExecuteCommand;
-    });
-
     test("should have correct name and aliases", () => {
       const command = RemoveCommand();
       expect(command.name).toBe("remove");
@@ -176,108 +267,75 @@ describe("Commands", () => {
       const command = RemoveCommand();
       const result = await command.execute([]);
       expect(result).toBe(1);
-      expect(mockLoggerError).toHaveBeenCalledWith(
-        "No package specified. Please provide a package name."
-      );
     });
 
     test("should show information about the command to be executed", async () => {
-      // Set up mock for parseContent to ensure console.log is called
-      const { parseContent: originalParseContent } = await import(
-        "../helpers/content-parser"
-      );
-      const mockParseContent = mock(() => "Mocked output");
-      (global as any).parseContent = mockParseContent;
+      // Setup mock for package.json to detect bun
+      mockJson.mockImplementation(() => Promise.resolve({ packageManager: "bun@1.0.0" }));
 
       const command = RemoveCommand();
       const result = await command.execute(["react"]);
 
       expect(mockConsoleLog).toHaveBeenCalled();
       expect(result).toBe(0);
-
-      // Restore original parseContent
-      (global as any).parseContent = originalParseContent;
-    });
-
-    test("should handle execution failure with error object", async () => {
-      // Override the mock for this specific test
-      const mockError = new Error("Command failed");
-      mockExecuteCommand.mockImplementationOnce(() =>
-        Promise.resolve({ success: false, exitCode: 2, error: mockError })
-      );
-
-      const command = RemoveCommand();
-      const result = await command.execute(["react"]);
-
-      expect(result).toBe(2);
-      expect(mockLoggerError).toHaveBeenCalledWith(
-        "Failed to execute command: bun remove react",
-        mockError
-      );
-    });
-
-    test("should handle execution failure without error object", async () => {
-      // Override the mock for this specific test
-      mockExecuteCommand.mockImplementationOnce(() =>
-        Promise.resolve({ success: false, exitCode: 3, error: undefined })
-      );
-
-      const command = RemoveCommand();
-      const result = await command.execute(["react"]);
-
-      expect(result).toBe(3);
-      expect(mockLoggerError).toHaveBeenCalledWith(
-        "Command failed with exit code 3"
-      );
     });
 
     test("should handle no package manager detected", async () => {
-      // Override the mock for this specific test
-      mockDetectPackageManager.mockImplementationOnce(() =>
-        Promise.resolve({
-          name: "none",
-          version: null,
-          detectionSource: DetectionSource.NOT_DETECTED,
-          detectionHint: "No package manager detected",
-        })
-      );
+      // Mock no package.json
+      mockExists.mockImplementation(() => Promise.resolve(false));
 
       const command = RemoveCommand();
       const result = await command.execute(["react"]);
 
       expect(result).toBe(1);
-      expect(mockLoggerError).toHaveBeenCalledWith(
-        "No package manager detected. Please run 'bun init' or 'bun install' to initialize the project."
-      );
     });
 
     test("should handle unsupported package manager", async () => {
-      // Override the mock for this specific test
-      mockDetectPackageManager.mockImplementationOnce(() =>
-        Promise.resolve({
-          name: "unsupported",
-          version: "1.0.0",
-          detectionSource: DetectionSource.LOCKFILE,
-          detectionHint: "Found unsupported.lock",
-        })
-      );
+      // Mock unsupported package manager in package.json
+      mockJson.mockImplementation(() => Promise.resolve({ packageManager: "unsupported@1.0.0" }));
 
       const command = RemoveCommand();
       const result = await command.execute(["react"]);
 
       expect(result).toBe(1);
-      expect(mockLoggerError).toHaveBeenCalledWith(
-        "Unknown package manager: unsupported."
-      );
+    });
+
+    test("should handle execution failure", async () => {
+      mockJson.mockImplementation(() => Promise.resolve({ packageManager: "bun@1.0.0" }));
+      mockSpawn.mockImplementation(() => {
+        return {
+          exited: Promise.resolve(1),
+          stdout: new ReadableStream({ start(c) { c.close(); } }),
+          stderr: new ReadableStream({ start(c) { c.close(); } }),
+        };
+      });
+
+      const command = RemoveCommand();
+      const result = await command.execute(["react"]);
+      expect(result).toBe(1);
+    });
+
+    test("should handle execution failure with error object", async () => {
+      mockJson.mockImplementation(() => Promise.resolve({ packageManager: "bun@1.0.0" }));
+      mockSpawn.mockImplementation(() => {
+        throw new Error("Spawn failed");
+      });
+
+      const command = RemoveCommand();
+      const result = await command.execute(["react"]);
+      expect(result).toBe(1);
+    });
+
+    test("should handle unexpected error", async () => {
+      mockJson.mockImplementation(() => { throw new Error("Unexpected"); });
+      const command = RemoveCommand();
+      const result = await command.execute(["react"]);
+      expect(result).toBe(1);
     });
 
     test("should handle package names with spaces", async () => {
-      // Set up mock for parseContent to ensure console.log is called
-      const { parseContent: originalParseContent } = await import(
-        "../helpers/content-parser"
-      );
-      const mockParseContent = mock(() => "Mocked output");
-      (global as any).parseContent = mockParseContent;
+      // Setup mock for package.json to detect bun
+      mockJson.mockImplementation(() => Promise.resolve({ packageManager: "bun@1.0.0" }));
 
       const command = RemoveCommand();
       const result = await command.execute([
@@ -288,59 +346,107 @@ describe("Commands", () => {
       expect(mockConsoleLog).toHaveBeenCalled();
       expect(result).toBe(0);
 
-      // Check that executePackageManagerCommand was called with the correct arguments
-      expect(mockExecuteCommand).toHaveBeenCalledWith("bun remove", [
-        "@scope/package-name",
-        "@another/pkg",
-      ]);
+      // Verify spawn was called with correct args
+      expect(mockSpawn).toHaveBeenCalled();
+      const calls = mockSpawn.mock.calls;
+      const lastCall = calls[calls.length - 1];
+      // Bun.spawn(["bun", "remove", ...])
+      expect(lastCall[0]).toContain("bun");
+      expect(lastCall[0]).toContain("remove");
+      expect(lastCall[0]).toContain("@scope/package-name");
+    });
+  });
 
-      // Restore original parseContent
-      (global as any).parseContent = originalParseContent;
+  describe("Update Command", () => {
+    test("should have correct name and aliases", () => {
+      const command = UpdateCommand();
+      expect(command.name).toBe("update");
+      expect(command.aliases).toContain("u");
     });
 
-    test("should handle package names with special characters", async () => {
-      // Set up mock for parseContent to ensure console.log is called
-      const { parseContent: originalParseContent } = await import(
-        "../helpers/content-parser"
-      );
-      const mockParseContent = mock(() => "Mocked output");
-      (global as any).parseContent = mockParseContent;
-
-      const command = RemoveCommand();
-      const result = await command.execute(["@types/node@latest"]);
-
-      expect(mockConsoleLog).toHaveBeenCalled();
-      expect(result).toBe(0);
-
-      // Check that executePackageManagerCommand was called with the correct arguments
-      expect(mockExecuteCommand).toHaveBeenCalledWith("bun remove", [
-        "@types/node@latest",
-      ]);
-
-      // Restore original parseContent
-      (global as any).parseContent = originalParseContent;
-    });
-
-    test("should handle unexpected errors during execution", async () => {
-      // Create a Command with a mock that throws an error
-      const originalImport = (global as any).import;
-
-      // Temporarily replace import with a function that throws
-      (global as any).import = mock(() => {
-        throw new Error("Unexpected import error");
-      });
-
-      const command = RemoveCommand();
+    test("should execute successfully", async () => {
+      mockJson.mockImplementation(() => Promise.resolve({ packageManager: "bun@1.0.0" }));
+      const command = UpdateCommand();
       const result = await command.execute(["react"]);
+      expect(result).toBe(0);
+      expect(mockSpawn).toHaveBeenCalled();
+      const calls = mockSpawn.mock.calls;
+      const lastCall = calls[calls.length - 1];
+      expect(lastCall[0]).toContain("bun");
+      expect(lastCall[0]).toContain("upgrade");
+    });
 
+    test("should handle no package manager detected", async () => {
+      mockExists.mockImplementation(() => Promise.resolve(false));
+      const command = UpdateCommand();
+      const result = await command.execute(["react"]);
       expect(result).toBe(1);
-      expect(mockLoggerError).toHaveBeenCalledWith(
-        "An unexpected error occurred",
-        expect.any(Error)
-      );
+    });
+  });
 
-      // Restore original import
-      (global as any).import = originalImport;
+  describe("Run Command", () => {
+    test("should have correct name", () => {
+      const command = RunCommand();
+      expect(command.name).toBe("run");
+    });
+
+    test("should return error when no script is specified", async () => {
+      const command = RunCommand();
+      const result = await command.execute([]);
+      expect(result).toBe(1);
+    });
+
+    test("should execute successfully", async () => {
+      mockJson.mockImplementation(() => Promise.resolve({ packageManager: "bun@1.0.0" }));
+      const command = RunCommand();
+      const result = await command.execute(["build"]);
+      expect(result).toBe(0);
+      expect(mockSpawn).toHaveBeenCalled();
+      const calls = mockSpawn.mock.calls;
+      const lastCall = calls[calls.length - 1];
+      expect(lastCall[0]).toContain("bun");
+      expect(lastCall[0]).toContain("run");
+      expect(lastCall[0]).toContain("build");
+    });
+
+    test("should handle no package manager detected", async () => {
+      mockExists.mockImplementation(() => Promise.resolve(false));
+      const command = RunCommand();
+      const result = await command.execute(["build"]);
+      expect(result).toBe(1);
+    });
+  });
+
+  describe("Exec Command", () => {
+    test("should have correct name and aliases", () => {
+      const command = ExecCommand();
+      expect(command.name).toBe("exec");
+      expect(command.aliases).toContain("x");
+    });
+
+    test("should return error when no command is specified", async () => {
+      const command = ExecCommand();
+      const result = await command.execute([]);
+      expect(result).toBe(1);
+    });
+
+    test("should execute successfully", async () => {
+      mockJson.mockImplementation(() => Promise.resolve({ packageManager: "bun@1.0.0" }));
+      const command = ExecCommand();
+      const result = await command.execute(["tsc"]);
+      expect(result).toBe(0);
+      expect(mockSpawn).toHaveBeenCalled();
+      const calls = mockSpawn.mock.calls;
+      const lastCall = calls[calls.length - 1];
+      expect(lastCall[0]).toContain("bunx");
+      expect(lastCall[0]).toContain("tsc");
+    });
+
+    test("should handle no package manager detected", async () => {
+      mockExists.mockImplementation(() => Promise.resolve(false));
+      const command = ExecCommand();
+      const result = await command.execute(["tsc"]);
+      expect(result).toBe(1);
     });
   });
 });

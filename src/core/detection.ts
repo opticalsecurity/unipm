@@ -11,19 +11,19 @@ import {
  * @returns Information about the detected package manager
  */
 export async function DetectPackageManager(): Promise<DetectPackageManagerOutput> {
-  // Check if package.json exists
-  const packageFile = Bun.file("package.json");
-
-  if (!(await packageFile.exists())) {
-    return {
-      name: "none",
-      version: null,
-      detectionSource: DetectionSource.NOT_DETECTED,
-      detectionHint: "No package.json file found",
-    };
-  }
-
   try {
+    // Check if package.json exists
+    const packageFile = Bun.file("package.json");
+
+    if (!(await packageFile.exists())) {
+      return {
+        name: "none",
+        version: null,
+        detectionSource: DetectionSource.NOT_DETECTED,
+        detectionHint: "No package.json file found",
+      };
+    }
+
     // Check if packageManager is specified in package.json
     const packageJson = await packageFile.json();
     const packageManager = packageJson.packageManager;
@@ -81,9 +81,8 @@ export async function DetectPackageManager(): Promise<DetectPackageManagerOutput
       name: "none",
       version: null,
       detectionSource: DetectionSource.NOT_DETECTED,
-      detectionHint: `Error: ${
-        error instanceof Error ? error.message : String(error)
-      }`,
+      detectionHint: `Error: ${error instanceof Error ? error.message : String(error)
+        }`,
     };
   }
 }

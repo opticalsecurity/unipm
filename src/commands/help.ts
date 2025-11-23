@@ -4,9 +4,9 @@ export function Command() {
     description: "Show help information",
     aliases: ["h", "?"],
     execute: async (args: string[]) => {
-      const { parseContent } = await import("../helpers/content-parser");
-      const { commands } = await import("../helpers/command-registry");
-      const { HelpContent } = await import("./contents/help");
+      const { parseContent } = await import("../utils/parser");
+      const { commands } = await import("../core/registry");
+      const { HelpContent } = await import("../constants/help-text");
       const { version } = await import("../../package.json");
 
       const output = parseContent(HelpContent, {

@@ -1,6 +1,6 @@
-import { CommandMatching } from "../layers/command-matching";
-import { executePackageManagerCommand } from "../layers/command-execution";
-import { Logger } from "../helpers/logger";
+import { CommandMatching } from "../core/matching";
+import { executePackageManagerCommand } from "../core/execution";
+import { Logger } from "../utils/logger";
 import { PackageManager } from "../types/package-managers";
 
 export function Command() {
@@ -16,10 +16,10 @@ export function Command() {
           return 1;
         }
 
-        const { parseContent } = await import("../helpers/content-parser");
-        const { RemoveContent } = await import("./contents/remove");
+        const { parseContent } = await import("../utils/parser");
+        const { RemoveContent } = await import("../constants/help-text");
         const { DetectPackageManager } = await import(
-          "../layers/package-manager-detection"
+          "../core/detection"
         );
         const { version } = await import("../../package.json");
 
@@ -36,7 +36,7 @@ export function Command() {
         }
 
         // Check if the detected package manager is a valid key in PackageManager enum
-        if (!(detectedPackageManager.name in PackageManager)) {
+        if (!Object.values(PackageManager).includes(detectedPackageManager.name as PackageManager)) {
           Logger.error(
             `Unknown package manager: ${detectedPackageManager.name}.`
           );

@@ -1,16 +1,19 @@
 {
   "name": "unipm",
-  "module": "src/entrypoint.ts",
+  "module": "src/cli/index.ts",
   "license": "GPL-3.0-or-later",
   "version": "0.6.0",
   "type": "module",
   "private": true,
   "scripts": {
     "build": "bun run ./src/scripts/build.ts",
-    "test": "bun test --bail --coverage --coverage-reporter=lcov --reporter=junit --reporter-outfile=./junit.xml"
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
   },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "@vitest/coverage-istanbul": "^4.0.13",
+    "vitest": "^4.0.13"
   },
   "peerDependencies": {
     "typescript": "^5"

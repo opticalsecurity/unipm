@@ -4,10 +4,10 @@ export function Command() {
     description: "Show the current project package manager",
     aliases: ["d"],
     execute: async (args: string[]) => {
-      const { parseContent } = await import("../helpers/content-parser");
-      const { DetectContent } = await import("./contents/detect");
+      const { parseContent } = await import("../utils/parser");
+      const { DetectContent } = await import("../constants/help-text");
       const { DetectPackageManager } = await import(
-        "../layers/package-manager-detection"
+        "../core/detection"
       );
       const { version } = await import("../../package.json");
 

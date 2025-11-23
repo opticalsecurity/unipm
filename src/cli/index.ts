@@ -1,6 +1,6 @@
-import { ExecuteCommand } from "./helpers/command-registry";
-import { CheckVersion } from "./helpers/check-unipm-version";
-const { version } = await import("../package.json");
+import { ExecuteCommand } from "../core/registry";
+import { CheckVersion } from "../utils/version";
+const { version } = await import("../../package.json");
 
 const args = process.argv.slice(2);
 async function main() {

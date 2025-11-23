@@ -1,6 +1,6 @@
-import { CommandMatching } from "../layers/command-matching";
-import { executePackageManagerCommand } from "../layers/command-execution";
-import { Logger } from "../helpers/logger";
+import { CommandMatching } from "../core/matching";
+import { executePackageManagerCommand } from "../core/execution";
+import { Logger } from "../utils/logger";
 
 export function Command() {
   return {
@@ -15,10 +15,10 @@ export function Command() {
           return 1;
         }
 
-        const { parseContent } = await import("../helpers/content-parser");
-        const { AddContent } = await import("./contents/add");
+        const { parseContent } = await import("../utils/parser");
+        const { AddContent } = await import("../constants/help-text");
         const { DetectPackageManager } = await import(
-          "../layers/package-manager-detection"
+          "../core/detection"
         );
         const { version } = await import("../../package.json");
 
@@ -37,7 +37,7 @@ export function Command() {
         // Get command variant for the detected package manager
         const commandVariant =
           CommandMatching.add[
-            detectedPackageManager.name as keyof typeof CommandMatching.add
+          detectedPackageManager.name as keyof typeof CommandMatching.add
           ];
 
         // Check if the package manager is supported

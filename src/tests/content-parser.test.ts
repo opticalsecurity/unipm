@@ -1,5 +1,5 @@
-import { expect, test, describe } from "bun:test";
-import { parseContent } from "../helpers/content-parser";
+import { expect, test, describe } from "vitest";
+import { parseContent } from "../utils/parser";
 
 describe("Content Parser", () => {
   test("should parse a simple template without variables", () => {

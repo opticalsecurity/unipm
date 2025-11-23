@@ -1,9 +1,9 @@
-import { expect, test, describe, beforeAll, mock } from "bun:test";
+import { expect, test, describe, vi } from "vitest";
 import {
   GetCommandByName,
   GetCommands,
   ExecuteCommand,
-} from "../helpers/command-registry";
+} from "../core/registry";
 
 describe("Command Registry", () => {
   test("GetCommands should return a list of commands", async () => {
@@ -44,7 +44,7 @@ describe("Command Registry", () => {
   test("ExecuteCommand should execute a command's execute function", async () => {
     // Mock console.log to verify execution
     const originalConsoleLog = console.log;
-    const mockConsoleLog = mock(() => {});
+    const mockConsoleLog = vi.fn(() => { });
     console.log = mockConsoleLog;
 
     await ExecuteCommand("help", []);

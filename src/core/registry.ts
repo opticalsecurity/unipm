@@ -3,14 +3,19 @@ import { Command as DetectCommand } from "../commands/detect";
 import { Command as AddCommand } from "../commands/add";
 import { Command as RemoveCommand } from "../commands/remove";
 import { Command as InstallCommand } from "../commands/install";
+import { Command as UpdateCommand } from "../commands/update";
+import { Command as RunCommand } from "../commands/run";
+import { Command as ExecCommand } from "../commands/exec";
 
 export const commands = [
   HelpCommand(),
   DetectCommand(),
   AddCommand(),
-  RemoveCommand(),
   InstallCommand(),
-  // Add other commands here
+  RemoveCommand(),
+  UpdateCommand(),
+  RunCommand(),
+  ExecCommand(),
 ];
 
 export async function GetCommands() {
@@ -46,4 +51,4 @@ export async function ExecuteCommand(nameOrAlias: string, args: string[]) {
   }
 }
 
-export async function CommandTableBuilder() {}
+export async function CommandTableBuilder() { }

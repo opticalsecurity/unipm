@@ -1,5 +1,5 @@
-import { expect, test, describe, mock, beforeEach, afterEach } from "bun:test";
-import { DetectPackageManager } from "../layers/package-manager-detection";
+import { expect, test, describe, vi, beforeEach, afterEach } from "vitest";
+import { DetectPackageManager } from "../core/detection";
 import { DetectionSource, PackageManager } from "../types/package-managers";
 
 describe("Package Manager Detection", () => {
@@ -13,11 +13,11 @@ describe("Package Manager Detection", () => {
 
   beforeEach(() => {
     // Mock Bun.file function
-    mockExists = mock(() => Promise.resolve(true));
-    mockJson = mock(() => Promise.resolve({}));
+    mockExists = vi.fn(() => Promise.resolve(true));
+    mockJson = vi.fn(() => Promise.resolve({}));
 
     // Create a file mock that returns an object with exists and json methods
-    mockBunFile = mock((path: string) => {
+    mockBunFile = vi.fn((path: string) => {
       return {
         exists: () => mockExists(path),
         json: () => mockJson(path),
@@ -30,7 +30,7 @@ describe("Package Manager Detection", () => {
     Bun.file = mockBunFile;
 
     // Mock Bun.spawn
-    mockSpawn = mock(() => {
+    mockSpawn = vi.fn(() => {
       return {
         exited: Promise.resolve(0),
         stdout: new ReadableStream({
