@@ -1,8 +1,10 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import {
   compareVersions,
   getPlatformIdentifier,
   findAssetUrl,
+  fetchLatestRelease,
+  getCurrentExecutablePath,
 } from "../core/updater";
 import type { GithubCheckVersionResponse } from "../types/github-check-version";
 
@@ -42,14 +44,6 @@ describe("Updater", () => {
   });
 
   describe("getPlatformIdentifier", () => {
-    const originalPlatform = process.platform;
-    const originalArch = process.arch;
-
-    afterEach(() => {
-      // Note: We can't actually restore these in Node/Bun as they're read-only
-      // The tests below work because we're testing the actual platform
-    });
-
     it("should return a valid platform identifier", () => {
       const identifier = getPlatformIdentifier();
       expect(identifier).toMatch(/^(linux|darwin|windows)-(x64|arm64)$/);
@@ -236,6 +230,32 @@ describe("Updater", () => {
       expect(url).toBe(
         "https://github.com/test/test/releases/download/v1.0.0/unipm-linux-x64"
       );
+    });
+  });
+
+  describe("fetchLatestRelease", () => {
+    const originalFetch = global.fetch;
+
+    afterEach(() => {
+      global.fetch = originalFetch;
+    });
+
+    it("should return release data on success", async () => {
+      const mockData = { tag_name: "v1.0.0", assets: [] };
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue(mockData),
+      });
+
+      const result = await fetchLatestRelease();
+      expect(result).toEqual(mockData);
+    });
+  });
+
+  describe("getCurrentExecutablePath", () => {
+    it("should return the process executable path", () => {
+      const path = getCurrentExecutablePath();
+      expect(path).toBe(process.execPath);
     });
   });
 });
