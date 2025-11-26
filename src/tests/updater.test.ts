@@ -234,18 +234,16 @@ describe("Updater", () => {
   });
 
   describe("fetchLatestRelease", () => {
-    const originalFetch = global.fetch;
-
     afterEach(() => {
-      global.fetch = originalFetch;
+      vi.restoreAllMocks();
     });
 
     it("should return release data on success", async () => {
       const mockData = { tag_name: "v1.0.0", assets: [] };
-      global.fetch = vi.fn().mockResolvedValue({
+      vi.spyOn(global, "fetch").mockResolvedValue({
         ok: true,
         json: vi.fn().mockResolvedValue(mockData),
-      });
+      } as unknown as Response);
 
       const result = await fetchLatestRelease();
       expect(result).toEqual(mockData);
