@@ -7,6 +7,7 @@
   "private": true,
   "scripts": {
     "build": "bun run ./src/scripts/build.ts",
+    "build:local": "bun run ./src/scripts/build-local.ts",
     "test": "bun run --bun vitest run",
     "test:coverage": "bun run --bun vitest run --coverage"
   },
