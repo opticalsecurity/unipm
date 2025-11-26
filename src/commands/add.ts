@@ -1,27 +1,23 @@
 import { CommandMatching } from "../core/matching";
+import { DetectPackageManager } from "../core/detection";
 import { executePackageManagerCommand } from "../core/execution";
 import { Logger } from "../utils/logger";
+import { parseContent } from "../utils/parser";
+import { AddContent } from "../constants/help-text";
 
 export function Command() {
   return {
     name: "add",
     description: "Add a package to the current project",
     aliases: ["a"],
-    execute: async (args: string[]) => {
+    execute: async (args: string[]): Promise<number> => {
+      // Validate arguments
+      if (args.length === 0) {
+        Logger.error("No package specified. Please provide a package name.");
+        return 1;
+      }
+
       try {
-        // Validate arguments
-        if (args.length === 0) {
-          Logger.error("No package specified. Please provide a package name.");
-          return 1;
-        }
-
-        const { parseContent } = await import("../utils/parser");
-        const { AddContent } = await import("../constants/help-text");
-        const { DetectPackageManager } = await import(
-          "../core/detection"
-        );
-        const { version } = await import("../../package.json");
-
         // Detect package manager
         const detectedPackageManager = await DetectPackageManager();
         Logger.debug("Detected package manager", detectedPackageManager);
@@ -37,7 +33,7 @@ export function Command() {
         // Get command variant for the detected package manager
         const commandVariant =
           CommandMatching.add[
-          detectedPackageManager.name as keyof typeof CommandMatching.add
+            detectedPackageManager.name as keyof typeof CommandMatching.add
           ];
 
         // Check if the package manager is supported
@@ -53,7 +49,6 @@ export function Command() {
 
         // Show information about the command to be executed
         const output = parseContent(AddContent, {
-          version,
           packageManager: detectedPackageManager.name,
           packageManagerVersion: detectedPackageManager.version || "unknown",
           command: fullCommand,

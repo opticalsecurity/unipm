@@ -1,17 +1,15 @@
+import { commands } from "../core/registry";
+import { parseContent } from "../utils/parser";
+import { HelpContent } from "../constants/help-text";
+
 export function Command() {
   return {
     name: "help",
     description: "Show help information",
     aliases: ["h", "?"],
-    execute: async (args: string[]) => {
-      const { parseContent } = await import("../utils/parser");
-      const { commands } = await import("../core/registry");
-      const { HelpContent } = await import("../constants/help-text");
-      const { version } = await import("../../package.json");
-
+    execute: async (_args: string[]): Promise<void> => {
       const output = parseContent(HelpContent, {
-        version,
-        commandsTable: `${commands
+        commandsTable: commands
           .map((command) => {
             const aliasesText =
               command.aliases && command.aliases.length
@@ -19,8 +17,8 @@ export function Command() {
                 : "";
             return `- ${command.name}${aliasesText}: ${command.description}`;
           })
-          .join("\n")}`,
-      }); // TODO: Replace with actual table using cli-table package.
+          .join("\n"),
+      });
 
       console.log(output);
     },

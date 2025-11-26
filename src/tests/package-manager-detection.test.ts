@@ -1,5 +1,5 @@
 import { expect, test, describe, vi, beforeEach, afterEach } from "vitest";
-import { DetectPackageManager } from "../core/detection";
+import { DetectPackageManager, clearDetectionCache } from "../core/detection";
 import { DetectionSource, PackageManager } from "../types/package-managers";
 
 describe("Package Manager Detection", () => {
@@ -12,6 +12,9 @@ describe("Package Manager Detection", () => {
   let originalSpawn: any;
 
   beforeEach(() => {
+    // Clear detection cache before each test
+    clearDetectionCache();
+
     // Mock Bun.file function
     mockExists = vi.fn(() => Promise.resolve(true));
     mockJson = vi.fn(() => Promise.resolve({}));

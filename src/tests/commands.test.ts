@@ -6,6 +6,7 @@ import { Command as InstallCommand } from "../commands/install";
 import { Command as UpdateCommand } from "../commands/update";
 import { Command as RunCommand } from "../commands/run";
 import { Command as ExecCommand } from "../commands/exec";
+import { clearDetectionCache } from "../core/detection";
 import { vi, describe, test, expect, beforeEach, afterEach } from "vitest";
 
 describe("Commands", () => {
@@ -19,6 +20,9 @@ describe("Commands", () => {
   let originalSpawn: any;
 
   beforeEach(() => {
+    // Clear detection cache before each test
+    clearDetectionCache();
+
     // Mock console.log
     originalConsoleLog = console.log;
     mockConsoleLog = vi.fn();
@@ -88,7 +92,9 @@ describe("Commands", () => {
 
     test("should output detection results when executed", async () => {
       // Setup mock for package.json
-      mockJson.mockImplementation(() => Promise.resolve({ packageManager: "bun@1.0.0" }));
+      mockJson.mockImplementation(() =>
+        Promise.resolve({ packageManager: "bun@1.0.0" })
+      );
 
       const command = DetectCommand();
       await command.execute([]);
@@ -111,7 +117,9 @@ describe("Commands", () => {
 
     test("should execute successfully with valid package", async () => {
       // Setup mock for package.json to detect bun
-      mockJson.mockImplementation(() => Promise.resolve({ packageManager: "bun@1.0.0" }));
+      mockJson.mockImplementation(() =>
+        Promise.resolve({ packageManager: "bun@1.0.0" })
+      );
 
       const command = AddCommand();
       const result = await command.execute(["react"]);
@@ -136,19 +144,31 @@ describe("Commands", () => {
     });
 
     test("should handle unsupported package manager", async () => {
-      mockJson.mockImplementation(() => Promise.resolve({ packageManager: "unsupported@1.0.0" }));
+      mockJson.mockImplementation(() =>
+        Promise.resolve({ packageManager: "unsupported@1.0.0" })
+      );
       const command = AddCommand();
       const result = await command.execute(["react"]);
       expect(result).toBe(1);
     });
 
     test("should handle execution failure", async () => {
-      mockJson.mockImplementation(() => Promise.resolve({ packageManager: "bun@1.0.0" }));
+      mockJson.mockImplementation(() =>
+        Promise.resolve({ packageManager: "bun@1.0.0" })
+      );
       mockSpawn.mockImplementation(() => {
         return {
           exited: Promise.resolve(1),
-          stdout: new ReadableStream({ start(c) { c.close(); } }),
-          stderr: new ReadableStream({ start(c) { c.close(); } }),
+          stdout: new ReadableStream({
+            start(c) {
+              c.close();
+            },
+          }),
+          stderr: new ReadableStream({
+            start(c) {
+              c.close();
+            },
+          }),
         };
       });
 
@@ -158,7 +178,9 @@ describe("Commands", () => {
     });
 
     test("should handle execution failure with error object", async () => {
-      mockJson.mockImplementation(() => Promise.resolve({ packageManager: "bun@1.0.0" }));
+      mockJson.mockImplementation(() =>
+        Promise.resolve({ packageManager: "bun@1.0.0" })
+      );
       mockSpawn.mockImplementation(() => {
         throw new Error("Spawn failed");
       });
@@ -169,7 +191,9 @@ describe("Commands", () => {
     });
 
     test("should handle unexpected error", async () => {
-      mockJson.mockImplementation(() => { throw new Error("Unexpected"); });
+      mockJson.mockImplementation(() => {
+        throw new Error("Unexpected");
+      });
       const command = AddCommand();
       const result = await command.execute(["react"]);
       expect(result).toBe(1);
@@ -191,7 +215,9 @@ describe("Commands", () => {
 
     test("should execute successfully without arguments", async () => {
       // Setup mock for package.json to detect bun
-      mockJson.mockImplementation(() => Promise.resolve({ packageManager: "bun@1.0.0" }));
+      mockJson.mockImplementation(() =>
+        Promise.resolve({ packageManager: "bun@1.0.0" })
+      );
 
       const command = InstallCommand();
       const result = await command.execute([]);
@@ -215,19 +241,31 @@ describe("Commands", () => {
     });
 
     test("should handle unsupported package manager", async () => {
-      mockJson.mockImplementation(() => Promise.resolve({ packageManager: "unsupported@1.0.0" }));
+      mockJson.mockImplementation(() =>
+        Promise.resolve({ packageManager: "unsupported@1.0.0" })
+      );
       const command = InstallCommand();
       const result = await command.execute([]);
       expect(result).toBe(1);
     });
 
     test("should handle execution failure", async () => {
-      mockJson.mockImplementation(() => Promise.resolve({ packageManager: "bun@1.0.0" }));
+      mockJson.mockImplementation(() =>
+        Promise.resolve({ packageManager: "bun@1.0.0" })
+      );
       mockSpawn.mockImplementation(() => {
         return {
           exited: Promise.resolve(1),
-          stdout: new ReadableStream({ start(c) { c.close(); } }),
-          stderr: new ReadableStream({ start(c) { c.close(); } }),
+          stdout: new ReadableStream({
+            start(c) {
+              c.close();
+            },
+          }),
+          stderr: new ReadableStream({
+            start(c) {
+              c.close();
+            },
+          }),
         };
       });
 
@@ -237,7 +275,9 @@ describe("Commands", () => {
     });
 
     test("should handle execution failure with error object", async () => {
-      mockJson.mockImplementation(() => Promise.resolve({ packageManager: "bun@1.0.0" }));
+      mockJson.mockImplementation(() =>
+        Promise.resolve({ packageManager: "bun@1.0.0" })
+      );
       mockSpawn.mockImplementation(() => {
         throw new Error("Spawn failed");
       });
@@ -248,7 +288,9 @@ describe("Commands", () => {
     });
 
     test("should handle unexpected error", async () => {
-      mockJson.mockImplementation(() => { throw new Error("Unexpected"); });
+      mockJson.mockImplementation(() => {
+        throw new Error("Unexpected");
+      });
       const command = InstallCommand();
       const result = await command.execute([]);
       expect(result).toBe(1);
@@ -271,7 +313,9 @@ describe("Commands", () => {
 
     test("should show information about the command to be executed", async () => {
       // Setup mock for package.json to detect bun
-      mockJson.mockImplementation(() => Promise.resolve({ packageManager: "bun@1.0.0" }));
+      mockJson.mockImplementation(() =>
+        Promise.resolve({ packageManager: "bun@1.0.0" })
+      );
 
       const command = RemoveCommand();
       const result = await command.execute(["react"]);
@@ -292,7 +336,9 @@ describe("Commands", () => {
 
     test("should handle unsupported package manager", async () => {
       // Mock unsupported package manager in package.json
-      mockJson.mockImplementation(() => Promise.resolve({ packageManager: "unsupported@1.0.0" }));
+      mockJson.mockImplementation(() =>
+        Promise.resolve({ packageManager: "unsupported@1.0.0" })
+      );
 
       const command = RemoveCommand();
       const result = await command.execute(["react"]);
@@ -301,12 +347,22 @@ describe("Commands", () => {
     });
 
     test("should handle execution failure", async () => {
-      mockJson.mockImplementation(() => Promise.resolve({ packageManager: "bun@1.0.0" }));
+      mockJson.mockImplementation(() =>
+        Promise.resolve({ packageManager: "bun@1.0.0" })
+      );
       mockSpawn.mockImplementation(() => {
         return {
           exited: Promise.resolve(1),
-          stdout: new ReadableStream({ start(c) { c.close(); } }),
-          stderr: new ReadableStream({ start(c) { c.close(); } }),
+          stdout: new ReadableStream({
+            start(c) {
+              c.close();
+            },
+          }),
+          stderr: new ReadableStream({
+            start(c) {
+              c.close();
+            },
+          }),
         };
       });
 
@@ -316,7 +372,9 @@ describe("Commands", () => {
     });
 
     test("should handle execution failure with error object", async () => {
-      mockJson.mockImplementation(() => Promise.resolve({ packageManager: "bun@1.0.0" }));
+      mockJson.mockImplementation(() =>
+        Promise.resolve({ packageManager: "bun@1.0.0" })
+      );
       mockSpawn.mockImplementation(() => {
         throw new Error("Spawn failed");
       });
@@ -327,7 +385,9 @@ describe("Commands", () => {
     });
 
     test("should handle unexpected error", async () => {
-      mockJson.mockImplementation(() => { throw new Error("Unexpected"); });
+      mockJson.mockImplementation(() => {
+        throw new Error("Unexpected");
+      });
       const command = RemoveCommand();
       const result = await command.execute(["react"]);
       expect(result).toBe(1);
@@ -335,7 +395,9 @@ describe("Commands", () => {
 
     test("should handle package names with spaces", async () => {
       // Setup mock for package.json to detect bun
-      mockJson.mockImplementation(() => Promise.resolve({ packageManager: "bun@1.0.0" }));
+      mockJson.mockImplementation(() =>
+        Promise.resolve({ packageManager: "bun@1.0.0" })
+      );
 
       const command = RemoveCommand();
       const result = await command.execute([
@@ -365,7 +427,9 @@ describe("Commands", () => {
     });
 
     test("should execute successfully", async () => {
-      mockJson.mockImplementation(() => Promise.resolve({ packageManager: "bun@1.0.0" }));
+      mockJson.mockImplementation(() =>
+        Promise.resolve({ packageManager: "bun@1.0.0" })
+      );
       const command = UpdateCommand();
       const result = await command.execute(["react"]);
       expect(result).toBe(0);
@@ -397,7 +461,9 @@ describe("Commands", () => {
     });
 
     test("should execute successfully", async () => {
-      mockJson.mockImplementation(() => Promise.resolve({ packageManager: "bun@1.0.0" }));
+      mockJson.mockImplementation(() =>
+        Promise.resolve({ packageManager: "bun@1.0.0" })
+      );
       const command = RunCommand();
       const result = await command.execute(["build"]);
       expect(result).toBe(0);
@@ -431,7 +497,9 @@ describe("Commands", () => {
     });
 
     test("should execute successfully", async () => {
-      mockJson.mockImplementation(() => Promise.resolve({ packageManager: "bun@1.0.0" }));
+      mockJson.mockImplementation(() =>
+        Promise.resolve({ packageManager: "bun@1.0.0" })
+      );
       const command = ExecCommand();
       const result = await command.execute(["tsc"]);
       expect(result).toBe(0);

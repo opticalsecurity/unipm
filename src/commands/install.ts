@@ -1,26 +1,22 @@
 import { CommandMatching } from "../core/matching";
+import { DetectPackageManager } from "../core/detection";
 import { executePackageManagerCommand } from "../core/execution";
 import { Logger } from "../utils/logger";
+import { parseContent } from "../utils/parser";
+import { InstallContent } from "../constants/help-text";
 
 export function Command() {
   return {
     name: "install",
     description: "Installs all project dependencies",
     aliases: ["i"],
-    execute: async (args: string[]) => {
+    execute: async (args: string[]): Promise<number> => {
+      if (args.length > 0) {
+        Logger.error("This command does not accept any arguments.");
+        return 1;
+      }
+
       try {
-        if (args.length > 0) {
-          Logger.error("This command does not accept any arguments.");
-          return 1;
-        }
-
-        const { parseContent } = await import("../utils/parser");
-        const { InstallContent } = await import("../constants/help-text");
-        const { DetectPackageManager } = await import(
-          "../core/detection"
-        );
-        const { version } = await import("../../package.json");
-
         // Detect package manager
         const detectedPackageManager = await DetectPackageManager();
         Logger.debug("Detected package manager", detectedPackageManager);
@@ -36,7 +32,7 @@ export function Command() {
         // Get command variant for the detected package manager
         const commandVariant =
           CommandMatching.install[
-          detectedPackageManager.name as keyof typeof CommandMatching.install
+            detectedPackageManager.name as keyof typeof CommandMatching.install
           ];
 
         // Check if the package manager is supported
@@ -52,7 +48,6 @@ export function Command() {
 
         // Show information about the command to be executed
         const output = parseContent(InstallContent, {
-          version,
           packageManager: detectedPackageManager.name,
           packageManagerVersion: detectedPackageManager.version || "unknown",
           command: fullCommand,

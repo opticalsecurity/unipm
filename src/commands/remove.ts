@@ -1,6 +1,9 @@
 import { CommandMatching } from "../core/matching";
+import { DetectPackageManager } from "../core/detection";
 import { executePackageManagerCommand } from "../core/execution";
 import { Logger } from "../utils/logger";
+import { parseContent } from "../utils/parser";
+import { RemoveContent } from "../constants/help-text";
 import { PackageManager } from "../types/package-managers";
 
 export function Command() {
@@ -8,21 +11,14 @@ export function Command() {
     name: "remove",
     description: "Remove a package from the current project",
     aliases: ["rm", "r"],
-    execute: async (args: string[]) => {
+    execute: async (args: string[]): Promise<number> => {
+      // Validate arguments
+      if (args.length === 0) {
+        Logger.error("No package specified. Please provide a package name.");
+        return 1;
+      }
+
       try {
-        // Validate arguments
-        if (args.length === 0) {
-          Logger.error("No package specified. Please provide a package name.");
-          return 1;
-        }
-
-        const { parseContent } = await import("../utils/parser");
-        const { RemoveContent } = await import("../constants/help-text");
-        const { DetectPackageManager } = await import(
-          "../core/detection"
-        );
-        const { version } = await import("../../package.json");
-
         // Detect package manager
         const detectedPackageManager = await DetectPackageManager();
         Logger.debug("Detected package manager", detectedPackageManager);
@@ -36,7 +32,11 @@ export function Command() {
         }
 
         // Check if the detected package manager is a valid key in PackageManager enum
-        if (!Object.values(PackageManager).includes(detectedPackageManager.name as PackageManager)) {
+        if (
+          !Object.values(PackageManager).includes(
+            detectedPackageManager.name as PackageManager
+          )
+        ) {
           Logger.error(
             `Unknown package manager: ${detectedPackageManager.name}.`
           );
@@ -60,7 +60,6 @@ export function Command() {
 
         // Show information about the command to be executed
         const output = parseContent(RemoveContent, {
-          version,
           packageManager: detectedPackageManager.name,
           packageManagerVersion: detectedPackageManager.version || "unknown",
           command: fullCommand,
