@@ -6,6 +6,7 @@ import { Command as InstallCommand } from "../commands/install";
 import { Command as UpdateCommand } from "../commands/update";
 import { Command as RunCommand } from "../commands/run";
 import { Command as ExecCommand } from "../commands/exec";
+import { Command as UpdateSelfCommand } from "../commands/update-self";
 
 export const commands = [
   HelpCommand(),
@@ -16,6 +17,7 @@ export const commands = [
   UpdateCommand(),
   RunCommand(),
   ExecCommand(),
+  UpdateSelfCommand(),
 ];
 
 export async function GetCommands() {
@@ -51,4 +53,4 @@ export async function ExecuteCommand(nameOrAlias: string, args: string[]) {
   }
 }
 
-export async function CommandTableBuilder() { }
+export async function CommandTableBuilder() {}

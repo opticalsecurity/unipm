@@ -1,5 +1,5 @@
 import { ExecuteCommand } from "../core/registry";
-import { CheckVersion } from "../utils/version";
+import { backgroundUpdateCheck } from "../core/updater";
 const { version } = await import("../../package.json");
 
 const args = process.argv.slice(2);
@@ -19,4 +19,8 @@ async function main() {
 }
 
 console.log(`📦 unipm v${version}`);
+
+// Background update check (non-blocking)
+backgroundUpdateCheck(version);
+
 await main();
