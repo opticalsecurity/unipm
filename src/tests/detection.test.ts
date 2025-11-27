@@ -167,6 +167,27 @@ describe("Package Manager Detection", () => {
     expect(result.name).toBe(PackageManager.PNPM);
   });
 
+  test("should detect from deno.lock", async () => {
+    mockExists.mockImplementation((path: string) =>
+      Promise.resolve(path === "package.json" || path === "deno.lock")
+    );
+    mockJson.mockImplementation(() => Promise.resolve({}));
+
+    mockSpawn.mockImplementation((args: string[]) => {
+      if (args[0] === "deno") {
+        return {
+          exited: Promise.resolve(0),
+          stdout: new Response("2.0.0").body,
+        };
+      }
+      return { exited: Promise.resolve(1), stdout: new Response("").body };
+    });
+
+    const result = await DetectPackageManager();
+    expect(result.name).toBe(PackageManager.DENO);
+    expect(result.detectionSource).toBe(DetectionSource.LOCKFILE);
+  });
+
   test("should handle getPackageManagerVersion failure", async () => {
     mockExists.mockImplementation((path: string) =>
       Promise.resolve(path === "package.json" || path === "package-lock.json")

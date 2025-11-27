@@ -13,6 +13,7 @@ const PACKAGE_MANAGERS = [
   { key: "2", name: PackageManager.PNPM, label: "pnpm" },
   { key: "3", name: PackageManager.YARN, label: "yarn" },
   { key: "4", name: PackageManager.NPM, label: "npm" },
+  { key: "5", name: PackageManager.DENO, label: "deno" },
 ] as const;
 
 // The hotkey to trigger the selector

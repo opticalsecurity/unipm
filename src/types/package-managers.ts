@@ -9,6 +9,7 @@
 
 export enum PackageManager {
   BUN = "bun",
+  DENO = "deno",
   PNPM = "pnpm",
   YARN = "yarn",
   NPM = "npm",
@@ -16,6 +17,7 @@ export enum PackageManager {
 
 export const PackageManagers = [
   PackageManager.BUN,
+  PackageManager.DENO,
   PackageManager.PNPM,
   PackageManager.YARN,
   PackageManager.NPM,
@@ -49,6 +51,7 @@ export enum Lockfile {
   PNPM = "pnpm-lock.yaml",
   BUN = "bun.lockb",
   BUN_NOT_BINARY = "bun.lock",
+  DENO = "deno.lock",
   CUSTOM = "custom.lock",
 }
 
@@ -58,4 +61,5 @@ export const Lockfiles = [
   Lockfile.PNPM,
   Lockfile.BUN,
   Lockfile.BUN_NOT_BINARY,
+  Lockfile.DENO,
 ];

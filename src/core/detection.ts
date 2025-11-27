@@ -96,9 +96,10 @@ async function detectPackageManagerInternal(): Promise<DetectPackageManagerOutpu
   // If no lockfile is found, try to detect by available commands
   const availablePackageManagers = await detectAvailablePackageManagers();
   if (availablePackageManagers.length > 0) {
-    // Priority: bun > pnpm > yarn > npm
+    // Priority: bun > deno > pnpm > yarn > npm
     const priorityOrder = [
       PackageManager.BUN,
+      PackageManager.DENO,
       PackageManager.PNPM,
       PackageManager.YARN,
       PackageManager.NPM,
@@ -135,6 +136,7 @@ async function getPackageManagerFromLockfile(
     [Lockfile.PNPM]: { pm: PackageManager.PNPM, name: "pnpm" },
     [Lockfile.BUN]: { pm: PackageManager.BUN, name: "bun" },
     [Lockfile.BUN_NOT_BINARY]: { pm: PackageManager.BUN, name: "bun" },
+    [Lockfile.DENO]: { pm: PackageManager.DENO, name: "deno" },
   };
 
   const mapping = lockfileToManager[lockfile];
@@ -198,6 +200,7 @@ async function detectAvailablePackageManagers(): Promise<
 > {
   const packageManagers = [
     PackageManager.BUN, // Check bun first as it's likely fastest
+    PackageManager.DENO,
     PackageManager.PNPM,
     PackageManager.YARN,
     PackageManager.NPM,

@@ -6,6 +6,7 @@ describe("Command Matching", () => {
     test("should have configuration for all package managers", () => {
         const managers = [
             PackageManager.BUN,
+            PackageManager.DENO,
             PackageManager.PNPM,
             PackageManager.YARN,
             PackageManager.NPM,
