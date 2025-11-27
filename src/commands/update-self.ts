@@ -121,14 +121,18 @@ async function handleUpdate(
   console.log(`  Updating: ${info.currentVersion} → ${info.latestVersion}`);
   console.log();
 
-  const success = await performUpdate(info.downloadUrl, (downloaded, total) => {
-    const percent = Math.round((downloaded / total) * 100);
-    const mb = (downloaded / 1024 / 1024).toFixed(1);
-    const totalMb = (total / 1024 / 1024).toFixed(1);
-    process.stdout.write(
-      `\r  Downloading: ${mb}MB / ${totalMb}MB (${percent}%)`
-    );
-  });
+  const success = await performUpdate(
+    info.downloadUrl,
+    info.checksumUrl,
+    (downloaded, total) => {
+      const percent = Math.round((downloaded / total) * 100);
+      const mb = (downloaded / 1024 / 1024).toFixed(1);
+      const totalMb = (total / 1024 / 1024).toFixed(1);
+      process.stdout.write(
+        `\r  Downloading: ${mb}MB / ${totalMb}MB (${percent}%)`
+      );
+    }
+  );
 
   console.log(); // New line after progress
 

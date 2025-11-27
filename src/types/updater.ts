@@ -7,6 +7,7 @@ export interface UpdateInfo {
   latestVersion: string;
   hasUpdate: boolean;
   downloadUrl: string | null;
+  checksumUrl: string | null;
   releaseNotes: string | null;
   publishedAt: Date | null;
 }

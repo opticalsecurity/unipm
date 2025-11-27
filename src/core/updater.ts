@@ -73,17 +73,57 @@ export function compareVersions(v1: string, v2: string): number {
 }
 
 /**
+ * Validate that a value matches the expected UpdateConfig schema
+ */
+function isValidConfig(value: unknown): value is Partial<UpdateConfig> {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+
+  const obj = value as Record<string, unknown>;
+
+  // Validate each field if present
+  if ("autoCheck" in obj && typeof obj.autoCheck !== "boolean") {
+    return false;
+  }
+  if (
+    "checkInterval" in obj &&
+    (typeof obj.checkInterval !== "number" || obj.checkInterval < 1)
+  ) {
+    return false;
+  }
+  if ("autoDownload" in obj && typeof obj.autoDownload !== "boolean") {
+    return false;
+  }
+  if (
+    "showNotifications" in obj &&
+    typeof obj.showNotifications !== "boolean"
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
+/**
  * Load update configuration from disk
  */
 export async function loadConfig(): Promise<UpdateConfig> {
   try {
     if (existsSync(CONFIG_FILE)) {
       const file = Bun.file(CONFIG_FILE);
-      const config = (await file.json()) as Partial<UpdateConfig>;
-      return { ...DEFAULT_UPDATE_CONFIG, ...config };
+      const rawConfig = await file.json();
+
+      // Validate the config schema
+      if (!isValidConfig(rawConfig)) {
+        Logger.debug("Invalid config file schema, using defaults");
+        return DEFAULT_UPDATE_CONFIG;
+      }
+
+      return { ...DEFAULT_UPDATE_CONFIG, ...rawConfig };
     }
-  } catch {
-    // Ignore errors, return default config
+  } catch (error) {
+    Logger.debug(`Error loading config: ${(error as Error).message}`);
   }
   return DEFAULT_UPDATE_CONFIG;
 }
@@ -93,9 +133,13 @@ export async function loadConfig(): Promise<UpdateConfig> {
  */
 export async function saveConfig(config: UpdateConfig): Promise<void> {
   if (!existsSync(CONFIG_DIR)) {
-    mkdirSync(CONFIG_DIR, { recursive: true });
+    mkdirSync(CONFIG_DIR, { recursive: true, mode: 0o700 });
   }
   await Bun.write(CONFIG_FILE, JSON.stringify(config, null, 2));
+  // Set restrictive permissions on config file (owner read/write only)
+  if (platform() !== "win32") {
+    chmodSync(CONFIG_FILE, 0o600);
+  }
 }
 
 /**
@@ -127,9 +171,13 @@ export async function shouldCheckForUpdate(): Promise<boolean> {
  */
 async function markUpdateChecked(): Promise<void> {
   if (!existsSync(CONFIG_DIR)) {
-    mkdirSync(CONFIG_DIR, { recursive: true });
+    mkdirSync(CONFIG_DIR, { recursive: true, mode: 0o700 });
   }
   await Bun.write(LAST_CHECK_FILE, Date.now().toString());
+  // Set restrictive permissions (owner read/write only)
+  if (platform() !== "win32") {
+    chmodSync(LAST_CHECK_FILE, 0o600);
+  }
 }
 
 /**
@@ -144,6 +192,23 @@ export async function fetchLatestRelease(): Promise<GithubCheckVersionResponse |
         "User-Agent": "unipm-updater",
       },
     });
+
+    // Handle rate limiting
+    if (response.status === 403 || response.status === 429) {
+      const retryAfter = response.headers.get("retry-after");
+      const rateLimitReset = response.headers.get("x-ratelimit-reset");
+
+      let waitMessage = "Rate limited by GitHub API.";
+      if (retryAfter) {
+        waitMessage += ` Try again in ${retryAfter} seconds.`;
+      } else if (rateLimitReset) {
+        const resetTime = new Date(parseInt(rateLimitReset, 10) * 1000);
+        waitMessage += ` Resets at ${resetTime.toLocaleTimeString()}.`;
+      }
+
+      Logger.warn(waitMessage);
+      return null;
+    }
 
     if (!response.ok) {
       Logger.debug(`GitHub API returned status ${response.status}`);
@@ -168,10 +233,78 @@ export function findAssetUrl(
   // Asset names should be like: unipm-linux-x64, unipm-darwin-arm64, unipm-windows-x64.exe
   const asset = release.assets.find((a) => {
     const name = a.name.toLowerCase();
-    return name.includes(platformId.toLowerCase());
+    return name.includes(platformId.toLowerCase()) && !name.endsWith(".sha256");
   });
 
   return asset?.browser_download_url ?? null;
+}
+
+/**
+ * Find the SHA256 checksum URL for a given asset
+ */
+export function findChecksumUrl(
+  release: GithubCheckVersionResponse,
+  platformId: string
+): string | null {
+  const asset = release.assets.find((a) => {
+    const name = a.name.toLowerCase();
+    return name.includes(platformId.toLowerCase()) && name.endsWith(".sha256");
+  });
+
+  return asset?.browser_download_url ?? null;
+}
+
+/**
+ * Calculate SHA256 hash of a file
+ */
+export async function calculateSHA256(filePath: string): Promise<string> {
+  const file = Bun.file(filePath);
+  const buffer = await file.arrayBuffer();
+  const hasher = new Bun.CryptoHasher("sha256");
+  hasher.update(new Uint8Array(buffer));
+  return hasher.digest("hex");
+}
+
+/**
+ * Fetch and parse checksum from a .sha256 file
+ */
+export async function fetchChecksum(url: string): Promise<string | null> {
+  try {
+    const response = await fetch(url, {
+      headers: {
+        "User-Agent": "unipm-updater",
+      },
+    });
+
+    if (!response.ok) {
+      Logger.debug(`Failed to fetch checksum: ${response.status}`);
+      return null;
+    }
+
+    const text = await response.text();
+    // Format is typically "hash  filename" or just "hash"
+    const hash = text.trim().split(/\s+/)[0];
+    return hash?.toLowerCase() ?? null;
+  } catch (error) {
+    Logger.debug(`Error fetching checksum: ${(error as Error).message}`);
+    return null;
+  }
+}
+
+/**
+ * Verify file integrity using SHA256 checksum
+ */
+export async function verifyChecksum(
+  filePath: string,
+  expectedHash: string
+): Promise<boolean> {
+  try {
+    const actualHash = await calculateSHA256(filePath);
+    return actualHash.toLowerCase() === expectedHash.toLowerCase();
+  } catch (error) {
+    Logger.debug(`Checksum verification error: ${(error as Error).message}`);
+    return false;
+  }
 }
 
 /**
@@ -194,10 +327,12 @@ export async function checkForUpdate(
     const hasUpdate = compareVersions(currentVersion, latestVersion) < 0;
 
     let downloadUrl: string | null = null;
+    let checksumUrl: string | null = null;
     if (hasUpdate) {
       try {
         const platformId = getPlatformIdentifier();
         downloadUrl = findAssetUrl(release, platformId);
+        checksumUrl = findChecksumUrl(release, platformId);
       } catch (error) {
         Logger.debug(`Platform detection error: ${(error as Error).message}`);
       }
@@ -212,6 +347,7 @@ export async function checkForUpdate(
         latestVersion,
         hasUpdate,
         downloadUrl,
+        checksumUrl,
         releaseNotes: release.body,
         publishedAt: new Date(release.published_at),
       },
@@ -306,6 +442,7 @@ export function getCurrentExecutablePath(): string {
  */
 export async function performUpdate(
   downloadUrl: string,
+  checksumUrl?: string | null,
   onProgress?: (downloaded: number, total: number) => void
 ): Promise<boolean> {
   const currentPath = getCurrentExecutablePath();
@@ -319,6 +456,34 @@ export async function performUpdate(
   if (!downloaded) {
     Logger.error("Failed to download update");
     return false;
+  }
+
+  // Verify checksum if available
+  if (checksumUrl) {
+    Logger.info("Verifying download integrity...");
+    const expectedHash = await fetchChecksum(checksumUrl);
+
+    if (expectedHash) {
+      const isValid = await verifyChecksum(tempPath, expectedHash);
+      if (!isValid) {
+        Logger.error(
+          "Checksum verification failed! The download may be corrupted or tampered with."
+        );
+        try {
+          unlinkSync(tempPath);
+        } catch {
+          // Ignore cleanup errors
+        }
+        return false;
+      }
+      Logger.success("Checksum verified");
+    } else {
+      Logger.warn(
+        "Could not fetch checksum file, proceeding without verification"
+      );
+    }
+  } else {
+    Logger.warn("No checksum available for this release");
   }
 
   Logger.info("Installing update...");

@@ -1,4 +1,57 @@
+/**
+ * Characters/patterns that could indicate command injection attempts
+ */
+const DANGEROUS_PATTERNS = [
+  /[;&|`$(){}[\]<>!]/, // Shell metacharacters
+  /\n|\r/, // Newlines (command chaining)
+  /\0/, // Null bytes
+];
 
+/**
+ * Allowed package managers - only these can be executed
+ */
+const ALLOWED_COMMANDS = new Set([
+  "npm",
+  "npx",
+  "pnpm",
+  "pnpx",
+  "yarn",
+  "bun",
+  "bunx",
+]);
+
+/**
+ * Validates and sanitizes command arguments to prevent injection attacks
+ * @throws Error if dangerous patterns are detected
+ */
+export function sanitizeArgument(arg: string): string {
+  // Check for dangerous patterns
+  for (const pattern of DANGEROUS_PATTERNS) {
+    if (pattern.test(arg)) {
+      throw new Error(
+        `Security error: Invalid character in argument "${arg.substring(
+          0,
+          50
+        )}"`
+      );
+    }
+  }
+
+  // Remove leading/trailing whitespace that could be exploited
+  return arg.trim();
+}
+
+/**
+ * Validates that a command is in the allowed list
+ * @throws Error if command is not allowed
+ */
+export function validateCommand(command: string): void {
+  if (!ALLOWED_COMMANDS.has(command)) {
+    throw new Error(
+      `Security error: Command "${command}" is not allowed. Only package managers are permitted.`
+    );
+  }
+}
 
 /**
  * Result of a command execution
@@ -56,8 +109,14 @@ export async function executeCommand(
   let timeoutId: Timer | undefined;
 
   try {
+    // Validate command is allowed
+    validateCommand(command);
+
+    // Sanitize all arguments
+    const sanitizedArgs = args.map(sanitizeArgument);
+
     // Prepare command array
-    const cmdArray = [command, ...args];
+    const cmdArray = [command, ...sanitizedArgs];
 
     // Configure stdout/stderr handling
     // For Bun.spawn, we can't easily use "inherit" and capture at the same time in the same way as Node
@@ -111,7 +170,7 @@ export async function executeCommand(
     const [exitCode] = await Promise.all([
       proc.exited,
       readStdout(),
-      readStderr()
+      readStderr(),
     ]);
 
     if (timeoutId) clearTimeout(timeoutId);
@@ -129,7 +188,6 @@ export async function executeCommand(
       stdout: stdoutContent,
       stderr: stderrContent,
     };
-
   } catch (error) {
     if (timeoutId) clearTimeout(timeoutId);
 

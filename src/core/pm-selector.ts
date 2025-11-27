@@ -18,6 +18,9 @@ const PACKAGE_MANAGERS = [
 // The hotkey to trigger the selector
 export const SWITCH_HOTKEY = "s";
 
+// Timeout for interactive input (30 seconds)
+const INPUT_TIMEOUT_MS = 30000;
+
 // Store for the override (persists during the command execution)
 let pmOverride: PackageManager | null = null;
 
@@ -51,7 +54,7 @@ export function printSwitchHint(detectedPM: string): void {
 
 /**
  * Show the package manager selector and wait for user choice
- * Returns the selected package manager or null if cancelled
+ * Returns the selected package manager or null if cancelled/timed out
  */
 export async function showPackageManagerSelector(): Promise<PackageManager | null> {
   return new Promise((resolve) => {
@@ -71,6 +74,8 @@ export async function showPackageManagerSelector(): Promise<PackageManager | nul
     }
     console.log(`  ${chalk.dim("c)")} Cancel`);
     console.log();
+    console.log(chalk.dim(`(auto-cancel in ${INPUT_TIMEOUT_MS / 1000}s)`));
+    console.log();
 
     process.stdout.write(chalk.bold("Choice: "));
 
@@ -79,6 +84,15 @@ export async function showPackageManagerSelector(): Promise<PackageManager | nul
       process.stdin.setRawMode(true);
     }
     process.stdin.resume();
+
+    // Setup timeout for security - don't wait forever for input
+    const timeoutId = setTimeout(() => {
+      cleanup();
+      console.log();
+      console.log();
+      Logger.warn("Input timed out, cancelled");
+      resolve(null);
+    }, INPUT_TIMEOUT_MS);
 
     const onKeypress = (key: Buffer) => {
       const char = key.toString().toLowerCase();
@@ -115,6 +129,7 @@ export async function showPackageManagerSelector(): Promise<PackageManager | nul
     };
 
     const cleanup = () => {
+      clearTimeout(timeoutId);
       process.stdin.removeListener("data", onKeypress);
       if (process.stdin.isTTY) {
         process.stdin.setRawMode(false);
