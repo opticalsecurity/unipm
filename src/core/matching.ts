@@ -13,7 +13,7 @@ export const PackageManagerConfig = {
     add: { command: "deno add", args: ["<package>"] },
     remove: { command: "deno remove", args: ["<package>"] },
     install: { command: "deno install", args: [] },
-    update: { command: "deno outdated --update", args: ["<package>"] },
+    update: { command: "deno install", args: [] },
     run: { command: "deno task", args: ["<script>"] },
     exec: { command: "deno run", args: ["<command>"] },
   },

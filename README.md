@@ -4,8 +4,8 @@
 ![Version](https://img.shields.io/github/v/release/opticalsecurity/unipm)
 ![License](https://img.shields.io/github/license/opticalsecurity/unipm)
 
-**unipm** is an open-source CLI to manage dependencies in Node.js projects,  
-automatically using the right package manager (npm, pnpm, yarn, bun, deno, etc.)  
+**unipm** is an open-source CLI to manage dependencies in Node.js and Deno projects,  
+automatically using the right package manager (npm, pnpm, yarn, bun, deno)  
 based on your project. Stop worrying about which command to use in each repo:  
 unipm detects and runs it for you!
 
