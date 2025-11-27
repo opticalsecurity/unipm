@@ -13,9 +13,32 @@ unipm detects and runs it for you!
 
 ## Installation
 
-1. Download latest binary (for your platform) from the [latest](https://github.com/opticalsecurity/unipm/releases/latest) GitHub release.
-2. Move the binary to the required folder in your OS (/usr/bin for Linux and MacOS)
-3. Open up a new terminal, and execute unipm.
+### Quick Install (Recommended)
+
+**Linux / macOS:**
+```bash
+curl -fsSL https://raw.githubusercontent.com/opticalsecurity/unipm/master/scripts/install.sh | bash
+```
+
+**Windows (PowerShell):**
+```powershell
+irm https://raw.githubusercontent.com/opticalsecurity/unipm/master/scripts/install.ps1 | iex
+```
+
+### Manual Installation
+
+1. Download the latest binary for your platform from [GitHub Releases](https://github.com/opticalsecurity/unipm/releases/latest)
+2. Move the binary to a directory in your PATH:
+   - **Linux/macOS:** `/usr/local/bin` or `~/.local/bin`
+   - **Windows:** `%LOCALAPPDATA%\unipm` or any folder in your PATH
+3. Make it executable (Linux/macOS): `chmod +x unipm`
+
+### Update
+
+Once installed, update to the latest version with:
+```bash
+unipm update-self
+```
 
 ---
 
