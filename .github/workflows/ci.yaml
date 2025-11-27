@@ -181,7 +181,16 @@ jobs:
       - name: Generate checksums
         working-directory: release-assets
         run: |
-          sha256sum * > checksums.txt
+          # Generate individual .sha256 files for each binary (for installers/updaters)
+          for file in *; do
+            if [ -f "$file" ] && [[ ! "$file" == *.sha256 ]] && [[ ! "$file" == checksums.txt ]]; then
+              sha256sum "$file" > "${file}.sha256"
+              echo "Generated: ${file}.sha256"
+            fi
+          done
+          
+          # Also generate combined checksums.txt for manual verification
+          sha256sum * 2>/dev/null | grep -v '.sha256' > checksums.txt || true
           echo "🔐 Checksums generated:"
           cat checksums.txt
 
@@ -193,25 +202,40 @@ jobs:
           body: |
             ## unipm v${{ needs.check-release.outputs.version }}
             
-            ### 📦 Installation
+            ### 📦 Quick Install
             
-            Download the appropriate binary for your platform from the assets below.
+            **Linux / macOS:**
+            ```bash
+            curl -fsSL https://raw.githubusercontent.com/${{ github.repository }}/master/scripts/install.sh | bash
+            ```
+            
+            **Windows (PowerShell):**
+            ```powershell
+            irm https://raw.githubusercontent.com/${{ github.repository }}/master/scripts/install.ps1 | iex
+            ```
+            
+            ### 📥 Manual Download
             
             | Platform | Architecture | File |
             |----------|--------------|------|
-            | Linux | x64 | `unipm-*-linux-x64` |
-            | Linux | ARM64 | `unipm-*-linux-arm64` |
-            | Linux (musl) | x64 | `unipm-*-linux-x64-musl` |
-            | Linux (musl) | ARM64 | `unipm-*-linux-arm64-musl` |
-            | macOS | x64 (Intel) | `unipm-*-darwin-x64` |
-            | macOS | ARM64 (Apple Silicon) | `unipm-*-darwin-arm64` |
-            | Windows | x64 | `unipm-*-windows-x64.exe` |
+            | Linux | x64 | `unipm-linux-x64` |
+            | Linux | ARM64 | `unipm-linux-arm64` |
+            | Linux (musl) | x64 | `unipm-linux-x64-musl` |
+            | Linux (musl) | ARM64 | `unipm-linux-arm64-musl` |
+            | macOS | x64 (Intel) | `unipm-darwin-x64` |
+            | macOS | ARM64 (Apple Silicon) | `unipm-darwin-arm64` |
+            | Windows | x64 | `unipm-windows-x64.exe` |
             
             ### 🔐 Verification
             
-            Verify your download using the `checksums.txt` file:
+            Each binary has a corresponding `.sha256` file for verification:
             ```bash
-            sha256sum -c checksums.txt --ignore-missing
+            # Linux/macOS
+            sha256sum -c unipm-linux-x64.sha256
+            
+            # Or verify manually
+            cat unipm-linux-x64.sha256
+            sha256sum unipm-linux-x64
             ```
             
             ---

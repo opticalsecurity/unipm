@@ -76,15 +76,17 @@ unipm automatically detects the package manager of a project with various method
 
 ## Available commands
 
-| Command      | Alias | Description                              |
-| ------------ | ----- | ---------------------------------------- |
-| add <pkg>    | i     | Installs a dependency                    |
-| remove <pkg> | r     | Uninstalls a dependency                  |
-| install      | i     | Installs all project dependencies        |
-| update       | u     | Updates dependencies                     |
-| run <script> |       | Runs a script from package.json          |
-| exec <cmd>   | x     | Runs a command using the package manager |
-| detect       |       | Detects the current project pm           |
+| Command       | Alias              | Description                              |
+| ------------- | ------------------ | ---------------------------------------- |
+| add \<pkg\>   | a                  | Installs a dependency                    |
+| remove \<pkg\>| r                  | Uninstalls a dependency                  |
+| install       | i                  | Installs all project dependencies        |
+| update        | u                  | Updates dependencies                     |
+| run \<script\>|                    | Runs a script from package.json          |
+| exec \<cmd\>  | x                  | Runs a command using the package manager |
+| detect        |                    | Detects the current project pm           |
+| update-self   | self-update        | Updates unipm to the latest version      |
+| help          | h, --help, -h      | Shows help information                   |
 
 ---
 

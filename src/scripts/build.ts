@@ -2,20 +2,6 @@ import { execSync } from "child_process";
 import { statSync, rmSync, mkdirSync } from "fs";
 import { join } from "path";
 
-// Helper function to format date components to two digits
-const formatDateComponent = (component: number): string => {
-  return component.toString().padStart(2, "0");
-};
-
-// Get current date components
-const currentDate = new Date();
-const day = formatDateComponent(currentDate.getDate());
-const month = formatDateComponent(currentDate.getMonth() + 1); // Month is 0-indexed
-const year = formatDateComponent(currentDate.getFullYear() % 100); // Get last two digits of the year
-
-// Get the first 7 digits of the current commit SHA
-const shortSha = execSync("git rev-parse --short=7 HEAD").toString().trim();
-
 const outDir = "./out";
 
 // Define all possible targets
@@ -28,6 +14,17 @@ const allTargets = [
   "bun-linux-x64-musl",
   "bun-linux-arm64-musl",
 ];
+
+// Map bun target names to clean platform names for release binaries
+const platformNames: Record<string, string> = {
+  "bun-linux-x64": "linux-x64",
+  "bun-linux-arm64": "linux-arm64",
+  "bun-darwin-x64": "darwin-x64",
+  "bun-darwin-arm64": "darwin-arm64",
+  "bun-windows-x64": "windows-x64",
+  "bun-linux-x64-musl": "linux-x64-musl",
+  "bun-linux-arm64-musl": "linux-arm64-musl",
+};
 
 // Get the target from the command line arguments
 // Expecting something like: bun run build --target bun-linux-x64
@@ -54,9 +51,12 @@ for (const target of targetsToBuild) {
     process.exit(1); // Exit if an invalid target is passed
   }
 
-  const platformArch = target.replace("bun-", ""); // "linux-x64", "linux-arm64", "darwin-arm64"
-  // Define the final filename
-  const finalFilename = `unipm-${year}-${month}-${day}-${shortSha}-${platformArch}`;
+  const platformArch = platformNames[target] || target.replace("bun-", "");
+  const isWindows = target.includes("windows");
+
+  // Define the final filename - simple and predictable for installers/updaters
+  // Format: unipm-<platform>[-<arch>][.exe]
+  const finalFilename = `unipm-${platformArch}${isWindows ? ".exe" : ""}`;
   const outFile = join(outDir, finalFilename);
 
   // Construct the build command

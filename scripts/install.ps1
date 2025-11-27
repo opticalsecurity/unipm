@@ -23,10 +23,10 @@ $Repo = "opticalsecurity/unipm"
 $BinaryName = "unipm.exe"
 
 # Colors and formatting
-function Write-Info { Write-Host "ℹ " -ForegroundColor Blue -NoNewline; Write-Host $args }
-function Write-Success { Write-Host "✓ " -ForegroundColor Green -NoNewline; Write-Host $args }
-function Write-Warn { Write-Host "⚠ " -ForegroundColor Yellow -NoNewline; Write-Host $args }
-function Write-Err { Write-Host "✗ " -ForegroundColor Red -NoNewline; Write-Host $args }
+function Write-Info { Write-Host "[i] " -ForegroundColor Blue -NoNewline; Write-Host $args }
+function Write-Success { Write-Host "[+] " -ForegroundColor Green -NoNewline; Write-Host $args }
+function Write-Warn { Write-Host "[!] " -ForegroundColor Yellow -NoNewline; Write-Host $args }
+function Write-Err { Write-Host "[x] " -ForegroundColor Red -NoNewline; Write-Host $args }
 
 # Detect architecture
 function Get-Platform {
@@ -96,15 +96,10 @@ function Add-ToPath {
 # Main installation
 function Install-Unipm {
     Write-Host ""
-    Write-Host "╔═══════════════════════════════════════╗" -ForegroundColor Blue
-    Write-Host "║" -ForegroundColor Blue -NoNewline
-    Write-Host "        " -NoNewline
-    Write-Host "unipm Installer" -ForegroundColor Green -NoNewline
-    Write-Host "                ║" -ForegroundColor Blue
-    Write-Host "║" -ForegroundColor Blue -NoNewline
-    Write-Host "   Universal Package Manager CLI       " -NoNewline
-    Write-Host "║" -ForegroundColor Blue
-    Write-Host "╚═══════════════════════════════════════╝" -ForegroundColor Blue
+    Write-Host "=========================================" -ForegroundColor Blue
+    Write-Host "         unipm Installer" -ForegroundColor Green
+    Write-Host "   Universal Package Manager CLI" -ForegroundColor White
+    Write-Host "=========================================" -ForegroundColor Blue
     Write-Host ""
 
     # Detect platform
@@ -193,6 +188,20 @@ function Install-Unipm {
 try {
     Install-Unipm
 } catch {
+    Write-Host ""
     Write-Err "Installation failed: $_"
+    Write-Host ""
+    Write-Host "Error details:" -ForegroundColor Red
+    Write-Host $_.Exception.Message -ForegroundColor Red
+    if ($_.Exception.InnerException) {
+        Write-Host $_.Exception.InnerException.Message -ForegroundColor Red
+    }
+    Write-Host ""
+    Write-Host "Press any key to exit..." -ForegroundColor Yellow
+    $null = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
     exit 1
 }
+
+# Pause at end so user can see the result
+Write-Host "Press any key to exit..." -ForegroundColor Gray
+$null = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
