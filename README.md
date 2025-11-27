@@ -1,6 +1,6 @@
 # unipm
 
-![Build](https://img.shields.io/github/actions/workflow/status/opticalsecurity/unipm/.github/workflows/build-release.yaml)
+![Build](https://img.shields.io/github/actions/workflow/status/opticalsecurity/unipm/.github/workflows/ci.yaml)
 ![Version](https://img.shields.io/github/v/release/opticalsecurity/unipm)
 ![License](https://img.shields.io/github/license/opticalsecurity/unipm)
 
