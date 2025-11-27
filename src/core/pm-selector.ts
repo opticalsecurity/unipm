@@ -10,9 +10,10 @@ import { Logger } from "../utils/logger";
 // Available package managers for selection
 const PACKAGE_MANAGERS = [
   { key: "1", name: PackageManager.BUN, label: "bun" },
-  { key: "2", name: PackageManager.PNPM, label: "pnpm" },
-  { key: "3", name: PackageManager.YARN, label: "yarn" },
-  { key: "4", name: PackageManager.NPM, label: "npm" },
+  { key: "2", name: PackageManager.DENO, label: "deno" },
+  { key: "3", name: PackageManager.PNPM, label: "pnpm" },
+  { key: "4", name: PackageManager.YARN, label: "yarn" },
+  { key: "5", name: PackageManager.NPM, label: "npm" },
 ] as const;
 
 // The hotkey to trigger the selector
