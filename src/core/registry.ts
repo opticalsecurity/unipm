@@ -15,6 +15,7 @@ import { Command as UpdateCommand } from "../commands/update";
 import { Command as RunCommand } from "../commands/run";
 import { Command as ExecCommand } from "../commands/exec";
 import { Command as UpdateSelfCommand } from "../commands/update-self";
+import { Command as SetAliasCommand } from "../commands/set-alias";
 
 // Command type definition
 export interface CommandDefinition {
@@ -36,6 +37,7 @@ const commandFactories = [
   RunCommand,
   ExecCommand,
   UpdateSelfCommand,
+  SetAliasCommand,
 ] as const;
 
 // Initialize all commands once (metadata is cheap, execute functions are just references)
