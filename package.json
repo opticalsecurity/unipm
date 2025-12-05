@@ -2,7 +2,7 @@
   "name": "unipm",
   "module": "src/cli/index.ts",
   "license": "GPL-3.0-or-later",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "type": "module",
   "private": true,
   "scripts": {
