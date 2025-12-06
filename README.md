@@ -11,6 +11,22 @@ unipm detects and runs it for you!
 
 ---
 
+## Index
+
+- [Installation](#installation)
+  - [Quick Install (Recommended)](#quick-install-recommended)
+  - [Manual Installation](#manual-installation)
+  - [Update](#update)
+- [Basic usage](#basic-usage)
+- [Configuration](#configuration)
+- [Available commands](#available-commands)
+- [Examples](#examples)
+- [Versioning](#versioning)
+- [Contributing](#contributing)
+- [Author](#author)
+
+---
+
 ## Installation
 
 ### Quick Install (Recommended)
@@ -66,11 +82,51 @@ unipm update
 unipm u
 ```
 
+During any unipm command, press `s` to open the interactive package-manager switcher. It lets you pick a different package manager for the current run without changing project settings.
+
 unipm automatically detects the package manager of a project with various methods, executed in this order:
 
-1. 'packageManager' field in package.json
-2. Any supported lockfiles present
-3. Any supported package manager installed in the system (Priority: bun > deno > pnpm > yarn > npm)
+1. Manual override (from the [interactive switcher](#interactive-package-manager-switcher))
+2. `preferredPackageManager` field in `unipm.config.json` in the current working directory
+3. `packageManager` field in package.json
+4. Any supported lockfiles present
+5. Any supported package manager installed in the system (Priority: bun > deno > pnpm > yarn > npm)
+
+---
+
+### Interactive package-manager switcher
+
+While a command is running, press `s` to open a menu where you can temporarily select a different package manager for that invocation. The manual choice only applies to the current run; future commands fall back to the normal detection order unless you switch again.
+
+---
+
+## Configuration
+
+You can configure unipm per project by adding an `unipm.config.json` file in the directory where you run the CLI. The file is optional; unipm falls back to auto-detection when a setting is missing.
+
+### Project config (`unipm.config.json`)
+
+```json
+{
+  "preferredPackageManager": "pnpm",
+  "debug": true,
+  "colors": false,
+  "ci": true
+}
+```
+
+- `preferredPackageManager`: Forces unipm to use the specified package manager for the project.
+- `debug`: Enables debug logging (can also be toggled with the `DEBUG` environment variable, which takes precedence).
+- `colors`: Controls colored terminal output (overridden by `NO_COLOR` or `FORCE_COLOR` when set).
+- `ci`: Enables CI-safe mode, which disables background update checks and interactive package-manager switching. The `CI` environment variable wins if set.
+
+> Environment variables always take precedence over config values, so you can temporarily override a project's defaults without changing the file.
+
+### Runtime behavior
+
+- When `ci` resolves to `true`, unipm disables background update checks and interactive package-manager switching to avoid blocking automation.
+- The effective color setting is applied to both stdout and stderr, following the same rules as chalk: `NO_COLOR` turns colors off, `FORCE_COLOR` turns them on.
+- If `debug` resolves to `true`, unipm sets `DEBUG=true` for the current process to surface verbose logging.
 
 ---
 

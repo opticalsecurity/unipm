@@ -15,9 +15,11 @@ import {
   getPackageManagerOverride,
   SWITCH_HOTKEY,
 } from "./pm-selector";
+import { getPreferredPackageManager, getRuntimeConfig } from "./config";
 import {
   PackageManager,
   type DetectPackageManagerOutput,
+  DetectionSource,
 } from "../types/package-managers";
 import { Logger } from "../utils/logger";
 
@@ -50,10 +52,34 @@ export async function getEffectivePackageManager(): Promise<DetectPackageManager
     return {
       name: override,
       version: null,
-      detectionSource: "override" as any,
+      detectionSource: DetectionSource.OVERRIDE,
       detectionHint: "Manually selected",
     };
   }
+
+  const preferred = await getPreferredPackageManager();
+  if (preferred.manager) {
+    const detected = await DetectPackageManager();
+    if (detected.name === preferred.manager) {
+      return {
+        ...detected,
+        detectionSource: DetectionSource.CONFIG,
+        detectionHint: preferred.path
+          ? `Configured in ${preferred.path}`
+          : "Configured in unipm.config.json",
+      };
+    }
+
+    return {
+      name: preferred.manager,
+      version: null,
+      detectionSource: DetectionSource.CONFIG,
+      detectionHint: preferred.path
+        ? `Configured in ${preferred.path}`
+        : "Configured in unipm.config.json",
+    };
+  }
+
   return DetectPackageManager();
 }
 
@@ -86,6 +112,9 @@ export async function runPackageManagerCommand(
   const fullCommand =
     args.length > 0 ? `${command} ${args.join(" ")}` : command;
 
+  const runtimeConfig = getRuntimeConfig();
+  const canInteract = process.stdin.isTTY && !runtimeConfig.ci;
+
   // Show what we're about to do
   console.log(
     chalk.bold.cyan("🔍 Package manager: ") +
@@ -95,7 +124,7 @@ export async function runPackageManagerCommand(
   console.log();
 
   // Show switch hint if TTY and enabled
-  if (showSwitchHint && process.stdin.isTTY) {
+  if (showSwitchHint && canInteract) {
     printSwitchHint(pm.name);
   }
 
@@ -104,7 +133,7 @@ export async function runPackageManagerCommand(
   let selectedPM: PackageManager | null = null;
   let keypressHandler: ((key: Buffer) => void) | null = null;
 
-  if (process.stdin.isTTY) {
+  if (canInteract) {
     process.stdin.setRawMode(true);
     process.stdin.resume();
 

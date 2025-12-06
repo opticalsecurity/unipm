@@ -35,6 +35,8 @@ export enum DetectionSource {
   PACKAGE_JSON = "package.json",
   LOCKFILE = "lockfile",
   COMMAND_AVAILABILITY = "command",
+  CONFIG = "config",
+  OVERRIDE = "override",
   NOT_DETECTED = "not detected",
 }
 
