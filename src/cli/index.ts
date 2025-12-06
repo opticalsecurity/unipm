@@ -1,3 +1,4 @@
+import { applyRuntimeConfig } from "../core/config";
 import { ExecuteCommand } from "../core/registry";
 import { backgroundUpdateCheck } from "../core/updater";
 import { Timer } from "../utils/timer";
@@ -6,6 +7,7 @@ import { Timer } from "../utils/timer";
 const { version } = await import("../../package.json");
 
 const args = process.argv.slice(2);
+const runtimeConfig = await applyRuntimeConfig();
 
 async function main() {
   const commandName = args[0] ?? "help";
@@ -28,6 +30,8 @@ async function main() {
 console.log(`📦 unipm v${version}`);
 
 // Background update check (non-blocking)
-backgroundUpdateCheck(version);
+if (!runtimeConfig.ci) {
+  backgroundUpdateCheck(version);
+}
 
 await main();

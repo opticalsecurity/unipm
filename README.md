@@ -11,6 +11,22 @@ unipm detects and runs it for you!
 
 ---
 
+## Index
+
+- [Installation](#installation)
+  - [Quick Install (Recommended)](#quick-install-recommended)
+  - [Manual Installation](#manual-installation)
+  - [Update](#update)
+- [Basic usage](#basic-usage)
+- [Configuration](#configuration)
+- [Available commands](#available-commands)
+- [Examples](#examples)
+- [Versioning](#versioning)
+- [Contributing](#contributing)
+- [Author](#author)
+
+---
+
 ## Installation
 
 ### Quick Install (Recommended)
@@ -68,9 +84,33 @@ unipm u
 
 unipm automatically detects the package manager of a project with various methods, executed in this order:
 
-1. 'packageManager' field in package.json
-2. Any supported lockfiles present
-3. Any supported package manager installed in the system (Priority: bun > deno > pnpm > yarn > npm)
+1. Manual override (from the interactive switcher)
+2. `preferredPackageManager` field in `unipm.config.json` in the current working directory
+3. `packageManager` field in package.json
+4. Any supported lockfiles present
+5. Any supported package manager installed in the system (Priority: bun > deno > pnpm > yarn > npm)
+
+---
+
+## Configuration
+
+You can configure unipm per project by adding an `unipm.config.json` file in the directory where you run the CLI. The file is optional; unipm falls back to auto-detection when a setting is missing.
+
+```json
+{
+  "preferredPackageManager": "pnpm",
+  "debug": true,
+  "colors": false,
+  "ci": true
+}
+```
+
+- `preferredPackageManager`: Forces unipm to use the specified package manager for the project.
+- `debug`: Enables debug logging (can also be toggled with the `DEBUG` environment variable, which takes precedence).
+- `colors`: Controls colored terminal output (overridden by `NO_COLOR` or `FORCE_COLOR` when set).
+- `ci`: Enables CI-safe mode, which disables background update checks and interactive package-manager switching. The `CI` environment variable wins if set.
+
+> Environment variables always take precedence over config values, so you can temporarily override a project's defaults without changing the file.
 
 ---
 
