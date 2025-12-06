@@ -8,6 +8,7 @@ import {
   getPreferredPackageManager,
   getProjectConfigPath,
   applyRuntimeConfig,
+  getRuntimeConfig,
 } from "../core/config";
 import { PackageManager } from "../types/package-managers";
 
@@ -150,6 +151,53 @@ describe("project configuration", () => {
     if ("stderr" in chalk) {
       expect(chalk.stderr.level).toBe(0);
     }
+
+    rmSync(basePath, { recursive: true, force: true });
+  });
+
+  test("clears CI environment flag when runtime config disables it", async () => {
+    const basePath = createTempDir();
+    const configPath = getProjectConfigPath(basePath);
+    writeFileSync(configPath, JSON.stringify({ ci: false }));
+
+    process.env.CI = "0";
+
+    const runtime = await applyRuntimeConfig(basePath);
+
+    expect(runtime).toEqual({
+      debug: false,
+      colors: initialChalkLevel > 0,
+      ci: false,
+      path: configPath,
+    });
+    expect(process.env.CI).toBeUndefined();
+
+    rmSync(basePath, { recursive: true, force: true });
+  });
+
+  test("resets runtime config when caches are cleared", async () => {
+    const basePath = createTempDir();
+    const configPath = getProjectConfigPath(basePath);
+    writeFileSync(configPath, JSON.stringify({ debug: true, colors: false, ci: true }));
+
+    delete process.env.DEBUG;
+    delete process.env.CI;
+    delete process.env.NO_COLOR;
+    delete process.env.FORCE_COLOR;
+
+    await applyRuntimeConfig(basePath);
+
+    delete process.env.DEBUG;
+    delete process.env.CI;
+
+    clearProjectConfigCache();
+
+    expect(getRuntimeConfig()).toEqual({
+      debug: false,
+      colors: initialChalkLevel > 0,
+      ci: false,
+      path: null,
+    });
 
     rmSync(basePath, { recursive: true, force: true });
   });

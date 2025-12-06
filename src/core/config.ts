@@ -201,6 +201,8 @@ export async function applyRuntimeConfig(basePath = process.cwd()): Promise<Reso
 
   if (runtimeConfig.ci) {
     process.env.CI = "true";
+  } else {
+    delete process.env.CI;
   }
 
   return runtimeConfig;
@@ -212,4 +214,5 @@ export function getRuntimeConfig(): ResolvedRuntimeConfig {
 
 export function clearProjectConfigCache(): void {
   configCache.clear();
+  runtimeConfig = resolveRuntimeConfig(DEFAULT_PROJECT_CONFIG, null);
 }
