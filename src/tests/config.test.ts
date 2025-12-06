@@ -96,6 +96,8 @@ describe("project configuration", () => {
 
     delete process.env.DEBUG;
     delete process.env.CI;
+    delete process.env.NO_COLOR;
+    delete process.env.FORCE_COLOR;
     chalk.level = initialChalkLevel;
     if ("stderr" in chalk) {
       chalk.stderr.level = initialStderrLevel;
