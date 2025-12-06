@@ -82,13 +82,21 @@ unipm update
 unipm u
 ```
 
+During any unipm command, press `s` to open the interactive package-manager switcher. It lets you pick a different package manager for the current run without changing project settings.
+
 unipm automatically detects the package manager of a project with various methods, executed in this order:
 
-1. Manual override (from the interactive switcher)
+1. Manual override (from the [interactive switcher](#interactive-package-manager-switcher))
 2. `preferredPackageManager` field in `unipm.config.json` in the current working directory
 3. `packageManager` field in package.json
 4. Any supported lockfiles present
 5. Any supported package manager installed in the system (Priority: bun > deno > pnpm > yarn > npm)
+
+---
+
+### Interactive package-manager switcher
+
+While a command is running, press `s` to open a menu where you can temporarily select a different package manager for that invocation. The manual choice only applies to the current run; future commands fall back to the normal detection order unless you switch again.
 
 ---
 
