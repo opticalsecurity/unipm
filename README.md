@@ -96,6 +96,8 @@ unipm automatically detects the package manager of a project with various method
 
 You can configure unipm per project by adding an `unipm.config.json` file in the directory where you run the CLI. The file is optional; unipm falls back to auto-detection when a setting is missing.
 
+### Project config (`unipm.config.json`)
+
 ```json
 {
   "preferredPackageManager": "pnpm",
@@ -111,6 +113,12 @@ You can configure unipm per project by adding an `unipm.config.json` file in the
 - `ci`: Enables CI-safe mode, which disables background update checks and interactive package-manager switching. The `CI` environment variable wins if set.
 
 > Environment variables always take precedence over config values, so you can temporarily override a project's defaults without changing the file.
+
+### Runtime behavior
+
+- When `ci` resolves to `true`, unipm disables background update checks and interactive package-manager switching to avoid blocking automation.
+- The effective color setting is applied to both stdout and stderr, following the same rules as chalk: `NO_COLOR` turns colors off, `FORCE_COLOR` turns them on.
+- If `debug` resolves to `true`, unipm sets `DEBUG=true` for the current process to surface verbose logging.
 
 ---
 
