@@ -3,6 +3,15 @@ import { delimiter, basename, dirname, join, sep } from "path";
 import { homedir } from "os";
 
 const WINDOWS_EXECUTABLE_SUFFIXES = [".exe", ".cmd", ".bat", ".ps1"];
+const SELF_HOST_BINARY_NAMES = new Set([
+  "unipm",
+  "npm",
+  "pnpm",
+  "yarn",
+  "yarnpkg",
+  "npx",
+  "pnpx",
+]);
 
 const COMMON_BINARY_PATHS: Record<string, string[]> = {
   bun: [
@@ -75,6 +84,15 @@ function normalizeCommonBinaryPath(path: string): string {
 }
 
 function isSelfBinary(path: string): boolean {
+  const currentBinaryName = normalizeBinaryName(process.execPath);
+  const isSelfHostedBinary =
+    SELF_HOST_BINARY_NAMES.has(currentBinaryName) ||
+    currentBinaryName.startsWith("unipm-");
+
+  if (!isSelfHostedBinary) {
+    return false;
+  }
+
   try {
     return realpathSync(path) === realpathSync(process.execPath);
   } catch {

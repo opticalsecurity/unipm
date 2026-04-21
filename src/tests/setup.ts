@@ -149,8 +149,10 @@ const bunShim = {
   CryptoHasher,
 };
 
-Object.defineProperty(globalThis, "Bun", {
-  value: bunShim,
-  writable: true,
-  configurable: true,
-});
+if (typeof (globalThis as { Bun?: unknown }).Bun === "undefined") {
+  Object.defineProperty(globalThis, "Bun", {
+    value: bunShim,
+    writable: true,
+    configurable: true,
+  });
+}
