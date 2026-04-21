@@ -5,7 +5,7 @@ export const PackageManagerConfig = {
     add: { command: "bun add", args: ["<package>"] },
     remove: { command: "bun remove", args: ["<package>"] },
     install: { command: "bun install", args: [] },
-    update: { command: "bun upgrade", args: ["<package>"] },
+    update: { command: "bun update", args: ["<package>"] },
     run: { command: "bun run", args: ["<script>"] },
     exec: { command: "bunx", args: ["<command>"] },
   },

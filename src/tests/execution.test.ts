@@ -5,6 +5,12 @@ import {
   validateCommand,
 } from "../core/execution";
 import { vi, describe, test, expect, beforeEach, afterEach } from "vitest";
+import { mkdtempSync, rmSync, symlinkSync, writeFileSync } from "fs";
+import { tmpdir } from "os";
+import { basename, join } from "path";
+
+const getCommandName = (value: string) =>
+  basename(value).replace(/\.(exe|cmd|bat|ps1)$/i, "");
 
 describe("Execution", () => {
   let originalBunSpawn: any;
@@ -149,8 +155,43 @@ describe("Execution", () => {
     const calls = mockBunSpawn.mock.calls;
     const lastCall = calls[calls.length - 1];
 
-    // Should be ["npm", "install", "pkg"]
-    expect(lastCall[0]).toEqual(["npm", "install", "pkg"]);
+    expect(getCommandName(lastCall[0][0])).toBe("npm");
+    expect(lastCall[0].slice(1)).toEqual(["install", "pkg"]);
+  });
+
+  test("should fail native package-manager execution for self-referential aliases", async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "unipm-execution-"));
+    const unipmPath = join(tempDir, "unipm");
+    const npmPath = join(tempDir, "npm");
+    const originalPath = process.env.PATH;
+    const originalExecPath = process.execPath;
+
+    writeFileSync(unipmPath, "");
+    symlinkSync(unipmPath, npmPath);
+    process.env.PATH = tempDir;
+
+    Object.defineProperty(process, "execPath", {
+      value: unipmPath,
+      configurable: true,
+      writable: true,
+    });
+
+    try {
+      const result = await executePackageManagerCommand("npm install", ["react"]);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBeDefined();
+      expect(result.error!.message).toContain('resolves to unipm itself');
+      expect(mockBunSpawn).not.toHaveBeenCalled();
+    } finally {
+      process.env.PATH = originalPath;
+      Object.defineProperty(process, "execPath", {
+        value: originalExecPath,
+        configurable: true,
+        writable: true,
+      });
+      rmSync(tempDir, { recursive: true, force: true });
+    }
   });
 
   test("should handle spawn exception", async () => {
@@ -181,22 +222,21 @@ describe("Security Validation", () => {
     expect(() => validateCommand("bun")).not.toThrow();
     expect(() => validateCommand("npx")).not.toThrow();
     expect(() => validateCommand("bunx")).not.toThrow();
+    expect(() => validateCommand("/home/user/.bun/bin/bun")).not.toThrow();
+    expect(() => validateCommand("/home/user/.bun/bin/bun.exe")).not.toThrow();
+    expect(() => validateCommand("/home/user/.bun/bin/npm.cmd")).not.toThrow();
   });
 
-  test("should reject arguments with shell metacharacters", () => {
+  test("should allow shell metacharacters in spawn-safe arguments", () => {
     expect(() => sanitizeArgument("react")).not.toThrow();
     expect(() => sanitizeArgument("react@latest")).not.toThrow();
     expect(() => sanitizeArgument("--save-dev")).not.toThrow();
 
-    expect(() => sanitizeArgument("react; rm -rf /")).toThrow("Security error");
-    expect(() => sanitizeArgument("react | cat /etc/passwd")).toThrow(
-      "Security error"
-    );
-    expect(() => sanitizeArgument("$(whoami)")).toThrow("Security error");
-    expect(() => sanitizeArgument("`whoami`")).toThrow("Security error");
-    expect(() => sanitizeArgument("react && malicious")).toThrow(
-      "Security error"
-    );
+    expect(() => sanitizeArgument("react; rm -rf /")).not.toThrow();
+    expect(() => sanitizeArgument("react | cat /etc/passwd")).not.toThrow();
+    expect(() => sanitizeArgument("$(whoami)")).not.toThrow();
+    expect(() => sanitizeArgument("`whoami`")).not.toThrow();
+    expect(() => sanitizeArgument("react && malicious")).not.toThrow();
   });
 
   test("should reject arguments with newlines", () => {
@@ -220,8 +260,8 @@ describe("Security Validation", () => {
     expect(result.error!.message).toContain("not allowed");
   });
 
-  test("executeCommand should reject dangerous arguments", async () => {
-    const result = await executeCommand("npm", ["install", "react; rm -rf /"]);
+  test("executeCommand should reject newline-based injection attempts", async () => {
+    const result = await executeCommand("npm", ["install", "react\nrm -rf /"]);
 
     expect(result.success).toBe(false);
     expect(result.error).toBeDefined();

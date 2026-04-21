@@ -1,4 +1,4 @@
-import { commands } from "../core/registry";
+import { GetCommands } from "../core/registry";
 import { parseContent } from "../utils/parser";
 import { HelpContent } from "../constants/help-text";
 
@@ -8,6 +8,7 @@ export function Command() {
     description: "Show help information",
     aliases: ["h", "?"],
     execute: async (_args: string[]): Promise<void> => {
+      const commands = await GetCommands();
       const output = parseContent(HelpContent, {
         commandsTable: commands
           .map((command) => {

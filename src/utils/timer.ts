@@ -53,23 +53,3 @@ export class Timer {
     return new Timer();
   }
 }
-
-/**
- * Simple memoization for async functions with TTL
- */
-export function memoizeAsync<T>(
-  fn: () => Promise<T>,
-  ttlMs: number = 5000
-): () => Promise<T> {
-  let cache: { value: T; timestamp: number } | null = null;
-
-  return async () => {
-    const now = Date.now();
-    if (cache && now - cache.timestamp < ttlMs) {
-      return cache.value;
-    }
-    const value = await fn();
-    cache = { value, timestamp: now };
-    return value;
-  };
-}

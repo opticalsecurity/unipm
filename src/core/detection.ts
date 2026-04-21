@@ -5,6 +5,7 @@ import {
   Lockfile,
   PackageManager,
 } from "../types/package-managers";
+import { resolveBinary } from "./binaries";
 
 // Cache for detected package manager (valid for current process)
 let cachedResult: DetectPackageManagerOutput | null = null;
@@ -143,7 +144,7 @@ async function getPackageManagerFromLockfile(
   if (mapping) {
     return {
       name: mapping.pm,
-      version: await getPackageManagerVersion(mapping.name),
+      version: null,
       detectionSource: DetectionSource.LOCKFILE,
       detectionHint: `Found ${lockfile}`,
     };
@@ -157,39 +158,14 @@ async function getPackageManagerFromLockfile(
   };
 }
 
-/**
- * Gets the version of a specific package manager (cached)
- */
-async function getPackageManagerVersion(
-  packageManager: string
-): Promise<string | null> {
-  // Check cache first
+function isPackageManagerAvailable(packageManager: string): boolean {
   if (versionCache.has(packageManager)) {
-    return versionCache.get(packageManager) ?? null;
+    return versionCache.get(packageManager) !== null;
   }
 
-  try {
-    const proc = Bun.spawn([packageManager, "--version"], {
-      stdout: "pipe",
-      stderr: "ignore",
-    });
-
-    const exitCode = await proc.exited;
-
-    if (exitCode !== 0) {
-      versionCache.set(packageManager, null);
-      return null;
-    }
-
-    const output = await new Response(proc.stdout).text();
-    const version =
-      output.includes(".") && output.trim() !== "" ? output.trim() : null;
-    versionCache.set(packageManager, version);
-    return version;
-  } catch {
-    versionCache.set(packageManager, null);
-    return null;
-  }
+  const executable = resolveBinary(packageManager, { excludeSelf: true });
+  versionCache.set(packageManager, executable);
+  return executable !== null;
 }
 
 /**
@@ -208,11 +184,10 @@ async function detectAvailablePackageManagers(): Promise<
 
   // Check all in parallel
   const checks = packageManagers.map(async (pm) => {
-    const version = await getPackageManagerVersion(pm);
-    if (version) {
+    if (isPackageManagerAvailable(pm)) {
       return {
         name: pm,
-        version,
+        version: null,
         detectionSource: DetectionSource.COMMAND_AVAILABILITY,
         detectionHint: `Command '${pm}' is available in the system`,
       } as DetectPackageManagerOutput;

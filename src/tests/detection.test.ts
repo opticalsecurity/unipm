@@ -1,6 +1,13 @@
 import { DetectPackageManager, clearDetectionCache } from "../core/detection";
 import { PackageManager, DetectionSource } from "../types/package-managers";
 import { vi, describe, test, expect, beforeEach, afterEach } from "vitest";
+import { basename } from "path";
+import { mkdtempSync, rmSync, symlinkSync, writeFileSync } from "fs";
+import { tmpdir } from "os";
+import { join } from "path";
+
+const getCommandName = (value: string) =>
+  basename(value).replace(/\.(exe|cmd|bat|ps1)$/i, "");
 
 describe("Package Manager Detection", () => {
   let originalBunFile: any;
@@ -71,7 +78,7 @@ describe("Package Manager Detection", () => {
     mockJson.mockImplementation(() => Promise.resolve({}));
 
     mockSpawn.mockImplementation((args: string[]) => {
-      if (args[0] === "bun") {
+      if (getCommandName(args[0] || "") === "bun") {
         return {
           exited: Promise.resolve(0),
           stdout: new Response("1.0.0").body,
@@ -93,7 +100,7 @@ describe("Package Manager Detection", () => {
     mockJson.mockImplementation(() => Promise.resolve({}));
 
     mockSpawn.mockImplementation((args: string[]) => {
-      if (args[0] === "npm") {
+      if (getCommandName(args[0] || "") === "npm") {
         return {
           exited: Promise.resolve(0),
           stdout: new Response("9.0.0").body,
@@ -154,7 +161,7 @@ describe("Package Manager Detection", () => {
     mockJson.mockImplementation(() => Promise.resolve({}));
 
     mockSpawn.mockImplementation((args: string[]) => {
-      if (args[0] === "pnpm") {
+      if (getCommandName(args[0] || "") === "pnpm") {
         return {
           exited: Promise.resolve(0),
           stdout: new Response("8.0.0").body,
@@ -174,7 +181,7 @@ describe("Package Manager Detection", () => {
     mockJson.mockImplementation(() => Promise.resolve({}));
 
     mockSpawn.mockImplementation((args: string[]) => {
-      if (args[0] === "deno") {
+      if (getCommandName(args[0] || "") === "deno") {
         return {
           exited: Promise.resolve(0),
           stdout: new Response("2.0.0").body,
@@ -216,5 +223,45 @@ describe("Package Manager Detection", () => {
     const result = await DetectPackageManager();
     expect(result.name).toBe(PackageManager.NPM);
     expect(result.version).toBeNull();
+  });
+
+  test("should ignore self-referential aliases when resolving lockfile versions", async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "unipm-detection-"));
+    const unipmPath = join(tempDir, "unipm");
+    const pnpmPath = join(tempDir, "pnpm");
+    const originalExecPath = process.execPath;
+    const originalPath = process.env.PATH;
+
+    writeFileSync(unipmPath, "");
+    symlinkSync(unipmPath, pnpmPath);
+    process.env.PATH = tempDir;
+
+    Object.defineProperty(process, "execPath", {
+      value: unipmPath,
+      writable: true,
+      configurable: true,
+    });
+
+    mockExists.mockImplementation((path: string) =>
+      Promise.resolve(path === "package.json" || path === "pnpm-lock.yaml")
+    );
+    mockJson.mockImplementation(() => Promise.resolve({}));
+
+    try {
+      const result = await DetectPackageManager();
+
+      expect(result.name).toBe(PackageManager.PNPM);
+      expect(result.version).toBeNull();
+      expect(result.detectionSource).toBe(DetectionSource.LOCKFILE);
+      expect(mockSpawn).not.toHaveBeenCalled();
+    } finally {
+      process.env.PATH = originalPath;
+      Object.defineProperty(process, "execPath", {
+        value: originalExecPath,
+        writable: true,
+        configurable: true,
+      });
+      rmSync(tempDir, { recursive: true, force: true });
+    }
   });
 });

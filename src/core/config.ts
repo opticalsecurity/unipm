@@ -1,5 +1,4 @@
 import chalk from "chalk";
-import { existsSync } from "fs";
 import { join } from "path";
 import { PackageManager, PackageManagers } from "../types/package-managers";
 import { Logger } from "../utils/logger";
@@ -139,12 +138,12 @@ export async function loadProjectConfig(
   const configPath = getProjectConfigPath(basePath);
 
   try {
-    if (!existsSync(configPath)) {
+    const file = Bun.file(configPath);
+    if (!(await file.exists())) {
       configCache.set(basePath, { config: DEFAULT_PROJECT_CONFIG, path: null });
       return { config: DEFAULT_PROJECT_CONFIG, path: null };
     }
 
-    const file = Bun.file(configPath);
     const raw = await file.json();
     const parsed = parseConfig(raw);
 

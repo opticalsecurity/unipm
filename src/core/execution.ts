@@ -1,11 +1,14 @@
+import {
+  normalizeBinaryName,
+  resolveCommandPath,
+  resolveBinary,
+  isSelfReferentialBinary,
+} from "./binaries";
+
 /**
  * Characters/patterns that could indicate command injection attempts
  */
-const DANGEROUS_PATTERNS = [
-  /[;&|`$(){}[\]<>!]/, // Shell metacharacters
-  /\n|\r/, // Newlines (command chaining)
-  /\0/, // Null bytes
-];
+const DANGEROUS_PATTERNS = [/\n|\r/, /\0/];
 
 /**
  * Allowed package managers - only these can be executed
@@ -18,6 +21,7 @@ const ALLOWED_COMMANDS = new Set([
   "yarn",
   "bun",
   "bunx",
+  "deno",
 ]);
 
 /**
@@ -46,11 +50,39 @@ export function sanitizeArgument(arg: string): string {
  * @throws Error if command is not allowed
  */
 export function validateCommand(command: string): void {
-  if (!ALLOWED_COMMANDS.has(command)) {
+  const commandName = normalizeBinaryName(command);
+
+  if (!ALLOWED_COMMANDS.has(commandName)) {
     throw new Error(
       `Security error: Command "${command}" is not allowed. Only package managers are permitted.`
     );
   }
+}
+
+function resolvePackageManagerCommand(
+  command: string,
+  args: string[]
+): { command: string; args: string[] } {
+  const normalizedCommand = normalizeBinaryName(command);
+
+  const realBinary = resolveBinary(command, { excludeSelf: true });
+  if (realBinary) {
+    return {
+      command: realBinary,
+      args,
+    };
+  }
+
+  if (isSelfReferentialBinary(command)) {
+    throw new Error(
+      `Execution error: Command "${normalizedCommand}" resolves to unipm itself. Install the real ${normalizedCommand} binary to use native unipm mode, or invoke the ${normalizedCommand} alias directly for compatibility mode.`
+    );
+  }
+
+  return {
+    command: resolveCommandPath(command),
+    args,
+  };
 }
 
 /**
@@ -72,6 +104,10 @@ export interface ExecuteCommandOptions {
   cwd?: string;
   /** If true, shows real-time output */
   liveOutput?: boolean;
+  /** If true, buffers stdout/stderr for the returned result */
+  captureOutput?: boolean;
+  /** If false, assumes the command path is already resolved */
+  resolveCommand?: boolean;
   /** Callback for stdout data */
   onStdout?: (data: string) => void;
   /** Callback for stderr data */
@@ -98,6 +134,8 @@ export async function executeCommand(
   const {
     cwd = process.cwd(),
     liveOutput = false,
+    captureOutput = true,
+    resolveCommand = true,
     onStdout,
     onStderr,
     timeout,
@@ -107,16 +145,24 @@ export async function executeCommand(
   let stdoutContent = "";
   let stderrContent = "";
   let timeoutId: Timer | undefined;
+  const stdoutDecoder = new TextDecoder();
+  const stderrDecoder = new TextDecoder();
+  const needsStdoutPipe = captureOutput || liveOutput || onStdout !== undefined;
+  const needsStderrPipe = captureOutput || liveOutput || onStderr !== undefined;
 
   try {
+    const spawnCommand = resolveCommand
+      ? resolvePackageManagerCommand(command, args)
+      : { command, args };
+
     // Validate command is allowed
-    validateCommand(command);
+    validateCommand(spawnCommand.command);
 
     // Sanitize all arguments
-    const sanitizedArgs = args.map(sanitizeArgument);
+    const sanitizedArgs = spawnCommand.args.map(sanitizeArgument);
 
     // Prepare command array
-    const cmdArray = [command, ...sanitizedArgs];
+    const cmdArray = [spawnCommand.command, ...sanitizedArgs];
 
     // Configure stdout/stderr handling
     // For Bun.spawn, we can't easily use "inherit" and capture at the same time in the same way as Node
@@ -124,8 +170,8 @@ export async function executeCommand(
 
     const proc = Bun.spawn(cmdArray, {
       cwd,
-      stdout: "pipe",
-      stderr: "pipe",
+      stdout: needsStdoutPipe ? "pipe" : "ignore",
+      stderr: needsStderrPipe ? "pipe" : "ignore",
       ...spawnOptions,
     });
 
@@ -144,10 +190,21 @@ export async function executeCommand(
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        const chunk = new TextDecoder().decode(value);
-        stdoutContent += chunk;
+        const chunk = stdoutDecoder.decode(value, { stream: true });
+        if (captureOutput) {
+          stdoutContent += chunk;
+        }
         if (liveOutput) process.stdout.write(chunk);
         if (onStdout) onStdout(chunk);
+      }
+
+      const finalChunk = stdoutDecoder.decode();
+      if (finalChunk) {
+        if (captureOutput) {
+          stdoutContent += finalChunk;
+        }
+        if (liveOutput) process.stdout.write(finalChunk);
+        if (onStdout) onStdout(finalChunk);
       }
     };
 
@@ -159,10 +216,21 @@ export async function executeCommand(
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        const chunk = new TextDecoder().decode(value);
-        stderrContent += chunk;
+        const chunk = stderrDecoder.decode(value, { stream: true });
+        if (captureOutput) {
+          stderrContent += chunk;
+        }
         if (liveOutput) process.stderr.write(chunk);
         if (onStderr) onStderr(chunk);
+      }
+
+      const finalChunk = stderrDecoder.decode();
+      if (finalChunk) {
+        if (captureOutput) {
+          stderrContent += finalChunk;
+        }
+        if (liveOutput) process.stderr.write(finalChunk);
+        if (onStderr) onStderr(finalChunk);
       }
     };
 
@@ -178,9 +246,9 @@ export async function executeCommand(
     // Check if it was killed by timeout (exitCode might be null or signal related)
     if (timeout && proc.signalCode) {
       throw new Error(
-        `Command timed out after ${timeout}ms: ${command} ${args.join(" ")}`
-      );
-    }
+          `Command timed out after ${timeout}ms: ${command} ${args.join(" ")}`
+        );
+      }
 
     return {
       success: exitCode === 0,
@@ -217,8 +285,22 @@ export async function executePackageManagerCommand(
   const cmd = parts[0]!;
   const cmdArgs = parts.slice(1);
 
-  return executeCommand(cmd, [...cmdArgs, ...args], {
-    liveOutput: true,
-    ...options,
-  });
+  try {
+    const resolved = resolvePackageManagerCommand(cmd, [...cmdArgs, ...args]);
+
+    return executeCommand(resolved.command, resolved.args, {
+      liveOutput: true,
+      captureOutput: false,
+      resolveCommand: false,
+      ...options,
+    });
+  } catch (error) {
+    return {
+      success: false,
+      exitCode: null,
+      stdout: "",
+      stderr: "",
+      error: error instanceof Error ? error : new Error(String(error)),
+    };
+  }
 }

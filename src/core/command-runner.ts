@@ -59,17 +59,6 @@ export async function getEffectivePackageManager(): Promise<DetectPackageManager
 
   const preferred = await getPreferredPackageManager();
   if (preferred.manager) {
-    const detected = await DetectPackageManager();
-    if (detected.name === preferred.manager) {
-      return {
-        ...detected,
-        detectionSource: DetectionSource.CONFIG,
-        detectionHint: preferred.path
-          ? `Configured in ${preferred.path}`
-          : "Configured in unipm.config.json",
-      };
-    }
-
     return {
       name: preferred.manager,
       version: null,

@@ -1,8 +1,8 @@
-import { execSync } from "child_process";
 import { statSync, rmSync, mkdirSync } from "fs";
 import { join } from "path";
 
 const outDir = "./out";
+const bunExecutable = process.execPath;
 
 // Define all possible targets
 const allTargets = [
@@ -60,7 +60,17 @@ for (const target of targetsToBuild) {
   const outFile = join(outDir, finalFilename);
 
   // Construct the build command
-  const command = `bun build --compile --minify --sourcemap ./src/cli/index.ts --outfile ${outFile} --target=${target}`;
+  const command = [
+    bunExecutable,
+    "build",
+    "--compile",
+    "--minify",
+    "--sourcemap=none",
+    "./src/cli/index.ts",
+    "--outfile",
+    outFile,
+    `--target=${target}`,
+  ] as const;
 
   try {
     // Check if the output file already exists and delete it
@@ -71,8 +81,14 @@ for (const target of targetsToBuild) {
       console.log(`Deleted ${outFile}.`);
     }
 
-    console.log(`Executing command: ${command}`);
-    execSync(command, { stdio: "inherit" });
+    console.log(`Executing command: bun ${command.slice(1).join(" ")}`);
+    const result = Bun.spawnSync(command, {
+      stdout: "inherit",
+      stderr: "inherit",
+    });
+    if (result.exitCode !== 0) {
+      throw new Error(`bun build failed with exit code ${result.exitCode}`);
+    }
     console.log(
       `Build for ${target} completed successfully! Output: ${outFile}`
     );

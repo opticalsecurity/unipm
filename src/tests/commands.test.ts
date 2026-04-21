@@ -8,6 +8,10 @@ import { Command as RunCommand } from "../commands/run";
 import { Command as ExecCommand } from "../commands/exec";
 import { clearDetectionCache } from "../core/detection";
 import { vi, describe, test, expect, beforeEach, afterEach } from "vitest";
+import { basename } from "path";
+
+const getCommandName = (value: string) =>
+  basename(value).replace(/\.(exe|cmd|bat|ps1)$/i, "");
 
 describe("Commands", () => {
   let originalConsoleLog: any;
@@ -131,7 +135,7 @@ describe("Commands", () => {
       expect(mockSpawn).toHaveBeenCalled();
       const calls = mockSpawn.mock.calls;
       const lastCall = calls[calls.length - 1];
-      expect(lastCall[0]).toContain("bun");
+      expect(getCommandName(lastCall[0][0])).toBe("bun");
       expect(lastCall[0]).toContain("add");
       expect(lastCall[0]).toContain("react");
     });
@@ -207,10 +211,20 @@ describe("Commands", () => {
       expect(command.aliases).toContain("i");
     });
 
-    test("should return error when arguments are provided", async () => {
+    test("should add packages when arguments are provided", async () => {
+      mockJson.mockImplementation(() =>
+        Promise.resolve({ packageManager: "bun@1.0.0" })
+      );
+
       const command = InstallCommand();
       const result = await command.execute(["some-arg"]);
-      expect(result).toBe(1);
+      expect(result).toBe(0);
+
+      const calls = mockSpawn.mock.calls;
+      const lastCall = calls[calls.length - 1];
+      expect(getCommandName(lastCall[0][0])).toBe("bun");
+      expect(lastCall[0]).toContain("add");
+      expect(lastCall[0]).toContain("some-arg");
     });
 
     test("should execute successfully without arguments", async () => {
@@ -229,7 +243,7 @@ describe("Commands", () => {
       expect(mockSpawn).toHaveBeenCalled();
       const calls = mockSpawn.mock.calls;
       const lastCall = calls[calls.length - 1];
-      expect(lastCall[0]).toContain("bun");
+      expect(getCommandName(lastCall[0][0])).toBe("bun");
       expect(lastCall[0]).toContain("install");
     });
 
@@ -412,8 +426,7 @@ describe("Commands", () => {
       expect(mockSpawn).toHaveBeenCalled();
       const calls = mockSpawn.mock.calls;
       const lastCall = calls[calls.length - 1];
-      // Bun.spawn(["bun", "remove", ...])
-      expect(lastCall[0]).toContain("bun");
+      expect(getCommandName(lastCall[0][0])).toBe("bun");
       expect(lastCall[0]).toContain("remove");
       expect(lastCall[0]).toContain("@scope/package-name");
     });
@@ -436,8 +449,8 @@ describe("Commands", () => {
       expect(mockSpawn).toHaveBeenCalled();
       const calls = mockSpawn.mock.calls;
       const lastCall = calls[calls.length - 1];
-      expect(lastCall[0]).toContain("bun");
-      expect(lastCall[0]).toContain("upgrade");
+      expect(getCommandName(lastCall[0][0])).toBe("bun");
+      expect(lastCall[0]).toContain("update");
     });
 
     test("should handle no package manager detected", async () => {
@@ -470,7 +483,7 @@ describe("Commands", () => {
       expect(mockSpawn).toHaveBeenCalled();
       const calls = mockSpawn.mock.calls;
       const lastCall = calls[calls.length - 1];
-      expect(lastCall[0]).toContain("bun");
+      expect(getCommandName(lastCall[0][0])).toBe("bun");
       expect(lastCall[0]).toContain("run");
       expect(lastCall[0]).toContain("build");
     });
@@ -506,7 +519,7 @@ describe("Commands", () => {
       expect(mockSpawn).toHaveBeenCalled();
       const calls = mockSpawn.mock.calls;
       const lastCall = calls[calls.length - 1];
-      expect(lastCall[0]).toContain("bunx");
+      expect(getCommandName(lastCall[0][0])).toBe("bunx");
       expect(lastCall[0]).toContain("tsc");
     });
 

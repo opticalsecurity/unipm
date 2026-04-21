@@ -4,10 +4,17 @@
 ![Version](https://img.shields.io/github/v/release/opticalsecurity/unipm)
 ![License](https://img.shields.io/github/license/opticalsecurity/unipm)
 
-**unipm** is an open-source CLI to manage dependencies in Node.js and Deno projects,  
-automatically using the right package manager (npm, pnpm, yarn, bun, deno)  
-based on your project. Stop worrying about which command to use in each repo:  
-unipm detects and runs it for you!
+**unipm** is an open-source CLI focused on making modern package-manager tooling 
+work transparently on top of **Bun**.
+
+You can use it in two ways:
+
+- As `unipm`, with its own command set and package-manager detection.
+- As a transparent compatibility layer by aliasing `npm`, `pnpm`, `yarn`, or `npx` to `unipm`.
+
+That means an agent, script, or human can keep running commands like `npm install`, 
+and `unipm` will translate them to Bun-first execution when possible, falling back to 
+the original frontend through `bunx` when Bun doesn't have an equivalent command.
 
 ---
 
@@ -49,6 +56,8 @@ irm https://raw.githubusercontent.com/opticalsecurity/unipm/master/scripts/insta
    - **Windows:** `%LOCALAPPDATA%\unipm` or any folder in your PATH
 3. Make it executable (Linux/macOS): `chmod +x unipm`
 
+The quick installers also bootstrap Bun if it is missing, because compatibility mode routes commands through Bun and `bunx`. If you install `unipm` manually, make sure Bun is available too.
+
 ### Update
 
 Once installed, update to the latest version with:
@@ -80,9 +89,40 @@ unipm i
 unipm update
 # or shortcut
 unipm u
+
+# Create the standard compatibility aliases
+unipm set-alias --compat
 ```
 
 During any unipm command, press `s` to open the interactive package-manager switcher. It lets you pick a different package manager for the current run without changing project settings.
+
+## Alias compatibility
+
+Once compatibility aliases exist, these commands work through `unipm` without changing your habits:
+
+```bash
+# npm / pnpm / yarn style commands translated to Bun
+npm install
+npm install react -D
+npm run build
+npm test
+pnpm dlx create-next-app@latest my-app
+yarn build
+npx eslint .
+
+# Create aliases in one shot
+unipm set-alias --compat
+# or explicitly
+unipm set-alias npm pnpm yarn npx
+```
+
+Alias mode is intentionally transparent:
+
+- No unipm banner
+- No timing footer
+- No interactive package-manager switcher
+- Bun-first translation for common package-manager workflows
+- `bunx <frontend>` fallback for commands Bun does not model directly
 
 unipm automatically detects the package manager of a project with various methods, executed in this order:
 
@@ -118,13 +158,15 @@ You can configure unipm per project by adding an `unipm.config.json` file in the
 - `preferredPackageManager`: Forces unipm to use the specified package manager for the project.
 - `debug`: Enables debug logging (can also be toggled with the `DEBUG` environment variable, which takes precedence).
 - `colors`: Controls colored terminal output (overridden by `NO_COLOR` or `FORCE_COLOR` when set).
-- `ci`: Enables CI-safe mode, which disables background update checks and interactive package-manager switching. The `CI` environment variable wins if set.
+- `ci`: Enables CI-safe mode, which disables interactive package-manager switching. The `CI` environment variable wins if set.
 
 > Environment variables always take precedence over config values, so you can temporarily override a project's defaults without changing the file.
 
 ### Runtime behavior
 
-- When `ci` resolves to `true`, unipm disables background update checks and interactive package-manager switching to avoid blocking automation.
+- Native `unipm` mode does not perform background update checks on startup by default, to keep cold start low.
+- If you explicitly want background update checks, run with `UNIPM_AUTO_UPDATE_CHECK=1`.
+- When `ci` resolves to `true`, unipm disables interactive package-manager switching to avoid blocking automation.
 - The effective color setting is applied to both stdout and stderr, following the same rules as chalk: `NO_COLOR` turns colors off, `FORCE_COLOR` turns them on.
 - If `debug` resolves to `true`, unipm sets `DEBUG=true` for the current process to surface verbose logging.
 
@@ -136,11 +178,12 @@ You can configure unipm per project by adding an `unipm.config.json` file in the
 | ------------- | ------------------ | ---------------------------------------- |
 | add \<pkg\>   | a                  | Installs a dependency                    |
 | remove \<pkg\>| r                  | Uninstalls a dependency                  |
-| install       | i                  | Installs all project dependencies        |
+| install       | i                  | Installs deps or adds packages           |
 | update        | u                  | Updates dependencies                     |
 | run \<script\>|                    | Runs a script from package.json          |
 | exec \<cmd\>  | x                  | Runs a command using the package manager |
 | detect        |                    | Detects the current project pm           |
+| set-alias     | alias              | Creates one or more command aliases      |
 | update-self   | self-update        | Updates unipm to the latest version      |
 | help          | h, --help, -h      | Shows help information                   |
 
@@ -160,6 +203,13 @@ unipm run build
 
 # Run a command
 unipm exec tsc
+
+# Make npm/pnpm/yarn/npx point to unipm
+unipm set-alias --compat
+
+# Keep using familiar commands
+npm install react
+yarn build
 ```
 
 ---

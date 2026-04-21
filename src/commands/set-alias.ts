@@ -8,6 +8,7 @@ import { homedir, platform } from "os";
 import { join, dirname } from "path";
 
 const isWindows = platform() === "win32";
+const COMPATIBILITY_ALIASES = ["npm", "pnpm", "yarn", "npx"] as const;
 
 export function Command() {
   return {
@@ -15,35 +16,14 @@ export function Command() {
     description: "Create a shell alias for unipm",
     aliases: ["alias"],
     execute: async (args: string[]): Promise<number> => {
-      const aliasName = args[0];
-      if (!aliasName) {
+      const requestedAliases = collectAliasNames(args);
+      if (requestedAliases.length === 0) {
         Logger.error("No alias name provided.");
-        Logger.info("Usage: unipm set-alias <alias-name>");
-        Logger.info("Example: unipm set-alias upm");
+        Logger.info("Usage: unipm set-alias <alias-name...>");
+        Logger.info("Example: unipm set-alias npm pnpm yarn npx");
+        Logger.info("Shortcut: unipm set-alias --compat");
         return 1;
       }
-
-      // Validate alias name (only alphanumeric and dashes/underscores)
-      if (!/^[a-zA-Z0-9_-]+$/.test(aliasName)) {
-        Logger.error(
-          "Invalid alias name. Use only letters, numbers, dashes, and underscores."
-        );
-        return 1;
-      }
-
-      // Prevent overwriting unipm itself
-      if (
-        aliasName === "unipm" ||
-        (isWindows && aliasName.toLowerCase() === "unipm")
-      ) {
-        Logger.error("Cannot create an alias with the same name as unipm.");
-        return 1;
-      }
-
-      const output = parseContent(SetAliasContent, {
-        aliasName,
-      });
-      console.log(output);
 
       // Find the unipm binary location
       const unipmPath = await findUnipmBinary();
@@ -57,38 +37,85 @@ export function Command() {
 
       // Determine install directory (same as unipm location)
       const installDir = dirname(unipmPath);
-      const aliasFileName = isWindows ? `${aliasName}.exe` : aliasName;
-      const aliasPath = join(installDir, aliasFileName);
 
-      // Check if alias already exists
-      const aliasFile = Bun.file(aliasPath);
-      if (await aliasFile.exists()) {
-        Logger.warn(`A file already exists at ${aliasPath}`);
-        Logger.info("Remove it first if you want to create this alias.");
-        return 1;
-      }
+      let hadError = false;
 
-      // Create alias (symlink on Unix, copy on Windows)
-      try {
-        const success = await createAlias(unipmPath, aliasPath);
-        if (!success) {
-          return 1;
+      for (const aliasName of requestedAliases) {
+        if (!isValidAliasName(aliasName)) {
+          Logger.error(
+            `Invalid alias name '${aliasName}'. Use only letters, numbers, dashes, and underscores.`
+          );
+          hadError = true;
+          continue;
         }
 
-        const successOutput = parseContent(SetAliasSuccessContent, {
-          aliasName,
-          aliasPath,
-          unipmPath,
-        });
-        console.log(successOutput);
+        if (
+          aliasName === "unipm" ||
+          (isWindows && aliasName.toLowerCase() === "unipm")
+        ) {
+          Logger.error("Cannot create an alias with the same name as unipm.");
+          hadError = true;
+          continue;
+        }
 
-        return 0;
-      } catch (error) {
-        Logger.error(`Failed to create alias: ${error}`);
-        return 1;
+        const output = parseContent(SetAliasContent, {
+          aliasName,
+        });
+        console.log(output);
+
+        const aliasFileName = isWindows ? `${aliasName}.exe` : aliasName;
+        const aliasPath = join(installDir, aliasFileName);
+        const aliasFile = Bun.file(aliasPath);
+        if (await aliasFile.exists()) {
+          Logger.warn(`A file already exists at ${aliasPath}`);
+          Logger.info("Remove it first if you want to create this alias.");
+          hadError = true;
+          continue;
+        }
+
+        try {
+          const success = await createAlias(unipmPath, aliasPath);
+          if (!success) {
+            hadError = true;
+            continue;
+          }
+
+          const successOutput = parseContent(SetAliasSuccessContent, {
+            aliasName,
+            aliasPath,
+            unipmPath,
+          });
+          console.log(successOutput);
+        } catch (error) {
+          Logger.error(`Failed to create alias: ${error}`);
+          hadError = true;
+        }
       }
+
+      return hadError ? 1 : 0;
     },
   };
+}
+
+function collectAliasNames(args: string[]): string[] {
+  const aliases = new Set<string>();
+
+  for (const arg of args) {
+    if (arg === "--compat" || arg === "compat" || arg === "all") {
+      for (const alias of COMPATIBILITY_ALIASES) {
+        aliases.add(alias);
+      }
+      continue;
+    }
+
+    aliases.add(arg);
+  }
+
+  return [...aliases];
+}
+
+function isValidAliasName(aliasName: string): boolean {
+  return /^[a-zA-Z0-9_-]+$/.test(aliasName);
 }
 
 /**
@@ -235,4 +262,11 @@ export async function findUnipmBinary(): Promise<string | null> {
 }
 
 // Export for testing
-export { createAlias, createUnixSymlink, createWindowsAlias, isWindows };
+export {
+  COMPATIBILITY_ALIASES,
+  createAlias,
+  createUnixSymlink,
+  createWindowsAlias,
+  isValidAliasName,
+  isWindows,
+};

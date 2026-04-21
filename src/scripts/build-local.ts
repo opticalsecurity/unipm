@@ -1,11 +1,12 @@
-import { execSync } from "child_process";
-import { statSync, rmSync, mkdirSync, renameSync, readdirSync } from "fs";
-import { join, basename } from "path";
+import { statSync, rmSync, mkdirSync, renameSync } from "fs";
+import { join } from "path";
 
 // Helper function to format date components to two digits
 const formatDateComponent = (component: number): string => {
   return component.toString().padStart(2, "0");
 };
+
+const bunExecutable = process.execPath;
 
 // Get current date components
 const currentDate = new Date();
@@ -14,7 +15,14 @@ const month = formatDateComponent(currentDate.getMonth() + 1); // Month is 0-ind
 const year = formatDateComponent(currentDate.getFullYear() % 100); // Get last two digits of the year
 
 // Get the first 7 digits of the current commit SHA
-const shortSha = execSync("git rev-parse --short=7 HEAD").toString().trim();
+const shaResult = Bun.spawnSync(["git", "rev-parse", "--short=7", "HEAD"], {
+  stdout: "pipe",
+  stderr: "inherit",
+});
+if (shaResult.exitCode !== 0) {
+  throw new Error(`Failed to resolve git SHA: exit code ${shaResult.exitCode}`);
+}
+const shortSha = shaResult.stdout.toString().trim();
 
 const outDir = "./out";
 const rootDir = ".";
@@ -71,7 +79,17 @@ if (!statSync(outDir, { throwIfNoEntry: false })) {
 }
 
 // Construct the build command
-const command = `bun build --compile --minify --sourcemap ./src/cli/index.ts --outfile ${outFile} --target=${target}`;
+const command = [
+  bunExecutable,
+  "build",
+  "--compile",
+  "--minify",
+  "--sourcemap=none",
+  "./src/cli/index.ts",
+  "--outfile",
+  outFile,
+  `--target=${target}`,
+] as const;
 
 try {
   // Check if the output file already exists and delete it
@@ -90,8 +108,14 @@ try {
   }
 
   console.log(`Detected target: ${target}`);
-  console.log(`Executing command: ${command}`);
-  execSync(command, { stdio: "inherit" });
+  console.log(`Executing command: bun ${command.slice(1).join(" ")}`);
+  const result = Bun.spawnSync(command, {
+    stdout: "inherit",
+    stderr: "inherit",
+  });
+  if (result.exitCode !== 0) {
+    throw new Error(`bun build failed with exit code ${result.exitCode}`);
+  }
   console.log(`Build completed successfully! Output: ${outFileWithExt}`);
 
   // Move the binary to the project root

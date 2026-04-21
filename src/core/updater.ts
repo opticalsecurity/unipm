@@ -20,6 +20,7 @@ const GITHUB_API_URL = `https://api.github.com/repos/${GITHUB_REPO}/releases/lat
 const CONFIG_DIR = join(homedir(), ".unipm");
 const CONFIG_FILE = join(CONFIG_DIR, "config.json");
 const LAST_CHECK_FILE = join(CONFIG_DIR, "last-update-check");
+let cachedUpdateConfig: UpdateConfig | null = null;
 
 /**
  * Get the current platform identifier for downloading the correct binary
@@ -109,23 +110,30 @@ function isValidConfig(value: unknown): value is Partial<UpdateConfig> {
  * Load update configuration from disk
  */
 export async function loadConfig(): Promise<UpdateConfig> {
+  if (cachedUpdateConfig) {
+    return cachedUpdateConfig;
+  }
+
   try {
-    if (existsSync(CONFIG_FILE)) {
-      const file = Bun.file(CONFIG_FILE);
+    const file = Bun.file(CONFIG_FILE);
+    if (await file.exists()) {
       const rawConfig = await file.json();
 
       // Validate the config schema
       if (!isValidConfig(rawConfig)) {
         Logger.debug("Invalid config file schema, using defaults");
-        return DEFAULT_UPDATE_CONFIG;
+        cachedUpdateConfig = DEFAULT_UPDATE_CONFIG;
+        return cachedUpdateConfig;
       }
 
-      return { ...DEFAULT_UPDATE_CONFIG, ...rawConfig };
+      cachedUpdateConfig = { ...DEFAULT_UPDATE_CONFIG, ...rawConfig };
+      return cachedUpdateConfig;
     }
   } catch (error) {
     Logger.debug(`Error loading config: ${(error as Error).message}`);
   }
-  return DEFAULT_UPDATE_CONFIG;
+  cachedUpdateConfig = DEFAULT_UPDATE_CONFIG;
+  return cachedUpdateConfig;
 }
 
 /**
@@ -136,6 +144,7 @@ export async function saveConfig(config: UpdateConfig): Promise<void> {
     mkdirSync(CONFIG_DIR, { recursive: true, mode: 0o700 });
   }
   await Bun.write(CONFIG_FILE, JSON.stringify(config, null, 2));
+  cachedUpdateConfig = config;
   // Set restrictive permissions on config file (owner read/write only)
   if (platform() !== "win32") {
     chmodSync(CONFIG_FILE, 0o600);
@@ -153,8 +162,8 @@ export async function shouldCheckForUpdate(): Promise<boolean> {
   }
 
   try {
-    if (existsSync(LAST_CHECK_FILE)) {
-      const file = Bun.file(LAST_CHECK_FILE);
+    const file = Bun.file(LAST_CHECK_FILE);
+    if (await file.exists()) {
       const lastCheck = parseInt(await file.text(), 10);
       const hoursSinceCheck = (Date.now() - lastCheck) / (1000 * 60 * 60);
       return hoursSinceCheck >= config.checkInterval;
@@ -389,15 +398,21 @@ export async function downloadFile(
       throw new Error("Could not get response reader");
     }
 
-    const chunks: Uint8Array[] = [];
     let downloaded = 0;
+    let bufferedResult =
+      contentLength > 0 ? new Uint8Array(contentLength) : null;
+    const chunks: Uint8Array[] = [];
 
     while (true) {
       const { done, value } = await reader.read();
 
       if (done) break;
 
-      chunks.push(value);
+      if (bufferedResult) {
+        bufferedResult.set(value, downloaded);
+      } else {
+        chunks.push(value);
+      }
       downloaded += value.length;
 
       if (onProgress && contentLength > 0) {
@@ -405,13 +420,14 @@ export async function downloadFile(
       }
     }
 
-    // Combine chunks
-    const totalLength = chunks.reduce((acc, chunk) => acc + chunk.length, 0);
-    const result = new Uint8Array(totalLength);
-    let offset = 0;
-    for (const chunk of chunks) {
-      result.set(chunk, offset);
-      offset += chunk.length;
+    if (!bufferedResult) {
+      const totalLength = chunks.reduce((acc, chunk) => acc + chunk.length, 0);
+      bufferedResult = new Uint8Array(totalLength);
+      let offset = 0;
+      for (const chunk of chunks) {
+        bufferedResult.set(chunk, offset);
+        offset += chunk.length;
+      }
     }
 
     // Ensure directory exists
@@ -421,7 +437,7 @@ export async function downloadFile(
     }
 
     // Write to file
-    await Bun.write(destPath, result);
+    await Bun.write(destPath, bufferedResult);
 
     return true;
   } catch (error) {

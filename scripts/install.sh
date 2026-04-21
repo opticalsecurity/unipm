@@ -93,10 +93,11 @@ verify_checksum() {
     return 0
 }
 
-# Add install directory to PATH in shell config
+# Add a directory to PATH in shell config
 add_to_path() {
+    local target_dir="$1"
     local shell_config=""
-    local path_line="export PATH=\"\$PATH:$INSTALL_DIR\""
+    local path_line="export PATH=\"\$PATH:$target_dir\""
 
     # Detect shell config file
     case "$SHELL" in
@@ -110,21 +111,54 @@ add_to_path() {
             ;;
         */fish) 
             shell_config="$HOME/.config/fish/config.fish"
-            path_line="set -gx PATH \$PATH $INSTALL_DIR"
+            path_line="set -gx PATH \$PATH $target_dir"
             ;;
     esac
 
     if [[ -n "$shell_config" ]]; then
-        if ! grep -q "$INSTALL_DIR" "$shell_config" 2>/dev/null; then
+        if ! grep -q "$target_dir" "$shell_config" 2>/dev/null; then
             echo "" >> "$shell_config"
             echo "# unipm" >> "$shell_config"
             echo "$path_line" >> "$shell_config"
-            info "Added $INSTALL_DIR to PATH in $shell_config"
+            info "Added $target_dir to PATH in $shell_config"
             warn "Run 'source $shell_config' or restart your terminal to use unipm"
         fi
     else
         warn "Could not detect shell config file"
-        warn "Please add $INSTALL_DIR to your PATH manually"
+        warn "Please add $target_dir to your PATH manually"
+    fi
+}
+
+ensure_bun_installed() {
+    local bun_dir="$HOME/.bun/bin"
+    local bun_binary="$bun_dir/bun"
+
+    if command -v bun &> /dev/null || [[ -x "$bun_binary" ]]; then
+        success "Bun runtime detected"
+        if [[ ":$PATH:" != *":$bun_dir:"* && -d "$bun_dir" ]]; then
+            add_to_path "$bun_dir"
+        fi
+        return 0
+    fi
+
+    info "Installing Bun runtime for compatibility mode..."
+    if command -v curl &> /dev/null; then
+        curl -fsSL https://bun.com/install | bash
+    elif command -v wget &> /dev/null; then
+        wget -qO- https://bun.com/install | bash
+    else
+        error "Bun is required for compatibility mode, but neither curl nor wget is available to install it."
+        exit 1
+    fi
+
+    if [[ ! -x "$bun_binary" ]]; then
+        error "Bun installation did not produce $bun_binary"
+        exit 1
+    fi
+
+    success "Installed Bun runtime"
+    if [[ ":$PATH:" != *":$bun_dir:"* ]]; then
+        add_to_path "$bun_dir"
     fi
 }
 
@@ -196,9 +230,11 @@ main() {
     mv "$binary_path" "${INSTALL_DIR}/${BINARY_NAME}"
     success "Installed successfully!"
 
+    ensure_bun_installed
+
     # Add to PATH if needed
     if [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
-        add_to_path
+        add_to_path "$INSTALL_DIR"
     fi
 
     # Verify installation

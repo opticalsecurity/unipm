@@ -93,6 +93,34 @@ function Add-ToPath {
     return $false
 }
 
+function Install-BunIfMissing {
+    $bunDir = Join-Path $env:USERPROFILE ".bun\bin"
+    $bunExe = Join-Path $bunDir "bun.exe"
+
+    if ((Get-Command bun -ErrorAction SilentlyContinue) -or (Test-Path $bunExe)) {
+        Write-Success "Bun runtime detected"
+        if (Test-Path $bunDir) {
+            Add-ToPath -Dir $bunDir | Out-Null
+        }
+        return
+    }
+
+    Write-Info "Installing Bun runtime for compatibility mode..."
+    try {
+        $installer = Invoke-WebRequest -Uri "https://bun.sh/install.ps1" -UseBasicParsing
+        Invoke-Expression $installer.Content
+    } catch {
+        throw "Failed to install Bun runtime: $_"
+    }
+
+    if (-not (Test-Path $bunExe)) {
+        throw "Bun installation did not produce $bunExe"
+    }
+
+    Add-ToPath -Dir $bunDir | Out-Null
+    Write-Success "Installed Bun runtime"
+}
+
 # Main installation
 function Install-Unipm {
     Write-Host ""
@@ -164,6 +192,8 @@ function Install-Unipm {
         
         Move-Item $tempBinary $destPath -Force
         Write-Success "Installed successfully!"
+
+        Install-BunIfMissing
 
         # Add to PATH
         Add-ToPath -Dir $InstallDir | Out-Null

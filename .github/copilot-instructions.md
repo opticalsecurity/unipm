@@ -2,12 +2,16 @@
 
 ## Project Overview
 
-unipm is a universal package manager CLI that auto-detects and delegates to the appropriate Node.js package manager (npm, pnpm, yarn, bun). Built with **Bun** as the runtime and build tool.
+unipm is a Bun-first package manager compatibility CLI. It has a native `unipm` command surface, but it also supports transparent alias mode when invoked as `npm`, `pnpm`, `yarn`, or `npx`.
 
 ## Architecture
 
 ```
-src/cli/index.ts      → Entry point, parses args and dispatches to registry
+src/cli/index.ts      → Thin entry point that delegates to `src/core/cli.ts`
+src/core/cli.ts       → Chooses native mode vs alias compatibility mode
+src/core/invocation.ts → Detects how the binary was invoked (`unipm` vs `npm`/`pnpm`/`yarn`/`npx`)
+src/core/compatibility.ts → Translates npm/pnpm/yarn/npx syntax to Bun or `bunx`
+src/core/binaries.ts  → Resolves Bun/bunx binaries and detects self-alias recursion
 src/core/registry.ts  → Command registry, resolves commands by name/alias
 src/core/detection.ts → Detects package manager (package.json → lockfile → available commands)
 src/core/matching.ts  → Maps unipm commands to package manager-specific commands
@@ -17,7 +21,9 @@ src/types/*.ts        → TypeScript enums/types (PackageManager, DetectionSourc
 src/utils/*.ts        → Logger, parser for help-text templates
 ```
 
-**Detection Priority**: `packageManager` field in package.json → lockfile detection → available system commands (bun > pnpm > yarn > npm)
+**Native `unipm` detection priority**: `packageManager` field in package.json → lockfile detection → available system commands (bun > pnpm > yarn > npm)
+
+**Alias mode target**: translate common npm/pnpm/yarn/npx commands to Bun directly; for unsupported frontend-specific commands, fall back to `bunx <frontend> ...`.
 
 ## Development Commands
 
@@ -72,7 +78,7 @@ Use `Logger` class from `src/utils/logger.ts`: `Logger.info()`, `Logger.success(
 
 ## Testing
 
-Tests use **Vitest** with Bun mocking. Mock `Bun.file()` and `Bun.spawn()` for detection tests:
+Tests use **Vitest** with a Bun shim loaded from `src/tests/setup.ts`, so the suite can run under Node or Bun. Mock `Bun.file()` and `Bun.spawn()` for detection tests:
 ```typescript
 // See src/tests/detection.test.ts for mocking patterns
 Bun.file = vi.fn(() => ({ exists: () => Promise.resolve(true), json: () => Promise.resolve({}) }));
